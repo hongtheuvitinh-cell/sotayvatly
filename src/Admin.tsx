@@ -31,6 +31,8 @@ export default function Admin({ onBack }: AdminProps) {
   const [selectedLessonId, setSelectedLessonId] = useState<number | null>(null);
   const [lessonData, setLessonData] = useState<FullLesson | null>(null);
   const [activeTab, setActiveTab] = useState<'chapters' | 'content'>('chapters');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [password, setPassword] = useState('');
 
   // Form states
   const [newChapterTitle, setNewChapterTitle] = useState('');
@@ -195,6 +197,37 @@ export default function Admin({ onBack }: AdminProps) {
     await fetch(`/api/content/${type}/${id}`, { method: 'DELETE' });
     if (selectedLessonId) fetchLessonDetails(selectedLessonId);
   };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password })
+    });
+    if (res.ok) setIsAuthenticated(true);
+    else alert("Sai mật khẩu!");
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-50">
+        <form onSubmit={handleLogin} className="bg-white p-8 rounded-xl shadow-sm border border-zinc-200">
+          <h2 className="text-lg font-bold mb-4">Nhập mật khẩu quản trị</h2>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full p-2 border border-zinc-300 rounded-lg mb-4"
+            placeholder="Mật khẩu"
+          />
+          <button type="submit" className="w-full bg-zinc-900 text-white py-2 rounded-lg font-medium">
+            Đăng nhập
+          </button>
+        </form>
+      </div>
+    );
+  }
 
   const updateContent = async (type: 'formula' | 'example' | 'practice', id: number, payload: any) => {
     // Cấu trúc dữ liệu gửi lên server
