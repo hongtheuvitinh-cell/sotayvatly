@@ -1,0 +1,15 @@
+@import "tailwindcss";
+@import url('https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css');
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  @apply bg-zinc-50 text-zinc-900 antialiased;
+}
+
+/* Fix KaTeX double rendering */
+.katex-mathml {
+  display: none;
+}
