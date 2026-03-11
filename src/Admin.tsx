@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   Plus, 
   Trash2, 
@@ -12,7 +12,8 @@ import {
   Dumbbell,
   Edit2,
   Check,
-  X
+  X,
+  Image as ImageIcon
 } from 'lucide-react';
 import { Chapter, FullLesson } from './types';
 
@@ -24,6 +25,43 @@ import 'katex/dist/katex.min.css';
 
 interface AdminProps {
   onBack: () => void;
+}
+
+function ImageUploader({ onUpload }: { onUpload: (url: string) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const formData = new FormData();
+    formData.append('image', file);
+    
+    const res = await fetch('/api/upload-image', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (res.ok) {
+      const { url } = await res.json();
+      onUpload(url);
+    } else {
+      alert("Upload ảnh thất bại!");
+    }
+  };
+  
+  return (
+    <>
+      <input type="file" ref={inputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
+      <button 
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        className="text-xs text-zinc-500 hover:text-zinc-900 flex items-center gap-1"
+      >
+        <ImageIcon size={14} /> Upload ảnh
+      </button>
+    </>
+  );
 }
 
 export default function Admin({ onBack }: AdminProps) {
@@ -567,6 +605,7 @@ export default function Admin({ onBack }: AdminProps) {
                           <div className="space-y-4 pt-4">
                             <div className="space-y-1">
                               <label className="text-[10px] font-bold text-zinc-400 uppercase">Mô tả dạng bài & phương pháp</label>
+                              <ImageUploader onUpload={(url) => setEditingContent({...editingContent, data: {...editingContent.data, title: editingContent.data.title + `\n![image](${url})`}})} />
                               <textarea 
                                 className="w-full px-4 py-2 bg-zinc-50 rounded-xl outline-none text-sm border border-zinc-200 min-h-[120px]"
                                 value={editingContent.data.title}
@@ -712,6 +751,7 @@ export default function Admin({ onBack }: AdminProps) {
                     <div className="bg-white border-2 border-dashed border-zinc-200 rounded-2xl p-6 space-y-6">
                       <div className="space-y-1">
                         <label className="text-[10px] font-bold text-zinc-400 uppercase">Mô tả dạng bài & phương pháp</label>
+                        <ImageUploader onUpload={(url) => setNewExample({...newExample, title: newExample.title + `\n![image](${url})`})} />
                         <textarea 
                           placeholder="Nhập mô tả dạng bài và phương pháp giải (hỗ trợ LaTeX)..." 
                           className="w-full px-4 py-2 bg-zinc-50 rounded-xl outline-none text-sm min-h-[120px]"
@@ -818,6 +858,7 @@ export default function Admin({ onBack }: AdminProps) {
                           <div className="space-y-4 pt-4">
                             <div className="space-y-1">
                               <label className="text-[10px] font-bold text-zinc-400 uppercase">Tiêu đề (hỗ trợ LaTeX)</label>
+                              <ImageUploader onUpload={(url) => setEditingContent({...editingContent, data: {...editingContent.data, title: editingContent.data.title + `\n![image](${url})`}})} />
                               <textarea 
                                 className="w-full px-4 py-2 bg-zinc-50 rounded-xl outline-none text-sm min-h-[60px] border border-zinc-200"
                                 value={editingContent.data.title}
@@ -974,6 +1015,7 @@ export default function Admin({ onBack }: AdminProps) {
                     <div className="bg-white border-2 border-dashed border-zinc-200 rounded-2xl p-6 space-y-6">
                       <div className="space-y-1">
                         <label className="text-[10px] font-bold text-zinc-400 uppercase">Tiêu đề bài tập (hỗ trợ LaTeX)</label>
+                        <ImageUploader onUpload={(url) => setNewPractice({...newPractice, title: newPractice.title + `\n![image](${url})`})} />
                         <textarea 
                           placeholder="Nhập tiêu đề (ví dụ: Câu 1, Bài 1...)" 
                           className="w-full px-4 py-2 bg-zinc-50 rounded-xl outline-none text-sm min-h-[60px]"
