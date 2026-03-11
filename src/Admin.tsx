@@ -641,7 +641,7 @@ export default function Admin({ onBack }: AdminProps) {
                           </div>
                         ) : (
                           <>
-                            <div className="markdown-body prose prose-zinc max-w-none pr-16 mb-4">
+                            <div className="markdown-body prose prose-zinc max-w-full mb-4 break-words">
                               <Markdown remarkPlugins={[remarkMath, remarkBreaks]} rehypePlugins={[rehypeKatex]}>
                                 {ex.title}
                               </Markdown>
@@ -910,7 +910,7 @@ export default function Admin({ onBack }: AdminProps) {
                           </div>
                         ) : (
                           <>
-                            <div className="markdown-body prose prose-zinc max-w-none pr-16 mb-4">
+                            <div className="markdown-body prose prose-zinc max-w-full mb-4 break-words">
                               <Markdown remarkPlugins={[remarkMath, remarkBreaks]} rehypePlugins={[rehypeKatex]}>
                                 {p.title}
                               </Markdown>
