@@ -1,7 +1,7 @@
 import express from "express";
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
-import multer from "multer";
+import Busboy from "busboy";
 
 dotenv.config();
 
@@ -11,8 +11,6 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 const app = express();
 app.use(express.json());
-
-const upload = multer({ storage: multer.memoryStorage() });
 
 // API Routes (copied from server.ts)
 app.post("/api/login", (req, res) => {
@@ -24,25 +22,38 @@ app.post("/api/login", (req, res) => {
   }
 });
 
-app.post("/api/upload-image", upload.single("image"), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: "No file uploaded" });
-  
-  const { originalname, buffer, mimetype } = req.file;
-  const fileName = `${Date.now()}_${originalname}`;
-  
-  const { data, error } = await supabase.storage
-    .from('images')
-    .upload(fileName, buffer, {
-      contentType: mimetype
-    });
+app.post("/api/upload-image", (req, res) => {
+  const busboy = Busboy({ headers: req.headers });
+  let fileData: Buffer[] = [];
+  let fileName = "";
+  let mimeType = "";
+
+  busboy.on("file", (fieldname, file, info) => {
+    const { filename, mimeType: type } = info;
+    fileName = `${Date.now()}_${filename}`;
+    mimeType = type;
+    file.on("data", (data) => fileData.push(data));
+  });
+
+  busboy.on("finish", async () => {
+    const buffer = Buffer.concat(fileData);
     
-  if (error) return res.status(500).json({ error: error.message });
-  
-  const { data: publicUrlData } = supabase.storage
-    .from('images')
-    .getPublicUrl(fileName);
+    const { data, error } = await supabase.storage
+      .from('images')
+      .upload(fileName, buffer, {
+        contentType: mimeType
+      });
+      
+    if (error) return res.status(500).json({ error: error.message });
     
-  res.json({ url: publicUrlData.publicUrl });
+    const { data: publicUrlData } = supabase.storage
+      .from('images')
+      .getPublicUrl(fileName);
+      
+    res.json({ url: publicUrlData.publicUrl });
+  });
+
+  req.pipe(busboy);
 });
 
 app.get("/api/chapters", async (req, res) => {
