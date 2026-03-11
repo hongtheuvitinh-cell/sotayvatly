@@ -1,6 +1,7 @@
 import express from "express";
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
+import multer from "multer";
 
 dotenv.config();
 
@@ -11,6 +12,8 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const app = express();
 app.use(express.json());
 
+const upload = multer({ storage: multer.memoryStorage() });
+
 // API Routes (copied from server.ts)
 app.post("/api/login", (req, res) => {
   const { password } = req.body;
@@ -19,6 +22,27 @@ app.post("/api/login", (req, res) => {
   } else {
     res.status(401).json({ error: "Sai mật khẩu" });
   }
+});
+
+app.post("/api/upload-image", upload.single("image"), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+  
+  const { originalname, buffer, mimetype } = req.file;
+  const fileName = `${Date.now()}_${originalname}`;
+  
+  const { data, error } = await supabase.storage
+    .from('images')
+    .upload(fileName, buffer, {
+      contentType: mimetype
+    });
+    
+  if (error) return res.status(500).json({ error: error.message });
+  
+  const { data: publicUrlData } = supabase.storage
+    .from('images')
+    .getPublicUrl(fileName);
+    
+  res.json({ url: publicUrlData.publicUrl });
 });
 
 app.get("/api/chapters", async (req, res) => {
