@@ -12,6 +12,15 @@ const app = express();
 app.use(express.json());
 
 // API Routes (copied from server.ts)
+app.post("/api/login", (req, res) => {
+  const { password } = req.body;
+  if (password === process.env.ADMIN_PASSWORD) {
+    res.json({ success: true });
+  } else {
+    res.status(401).json({ error: "Sai mật khẩu" });
+  }
+});
+
 app.get("/api/chapters", async (req, res) => {
   const { subject, grade } = req.query;
   try {
