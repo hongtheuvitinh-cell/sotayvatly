@@ -37,6 +37,26 @@ export interface PracticeExercise {
   items: PracticeItem[];
 }
 
+export interface QuizOption {
+  label: string;
+  content: string;
+}
+
+export interface QuizItem {
+  question: string;
+  options: QuizOption[];
+  correct_answer: string;
+  explanation?: string;
+}
+
+export interface QuizSection {
+  id: number;
+  lesson_id: number;
+  title: string;
+  items: QuizItem[];
+  sort_order: number;
+}
+
 export interface FullLesson {
   id: number;
   title: string;
@@ -44,4 +64,5 @@ export interface FullLesson {
   formulas: Formula[];
   examples: Example[];
   practice: PracticeExercise[];
+  quizzes: QuizSection[];
 }
