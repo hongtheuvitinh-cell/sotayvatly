@@ -13,7 +13,8 @@ import {
   Edit2,
   Check,
   X,
-  Image as ImageIcon
+  Image as ImageIcon,
+  ListChecks
 } from 'lucide-react';
 import { Chapter, FullLesson } from './types';
 
@@ -171,6 +172,20 @@ export default function Admin({ onBack }: AdminProps) {
     title: '',
     items: [{ problem: '', hint: '', answer: '' }]
   });
+  const [newQuiz, setNewQuiz] = useState({
+    title: '',
+    items: [{ 
+      question: '', 
+      options: [
+        { label: 'A', content: '' },
+        { label: 'B', content: '' },
+        { label: 'C', content: '' },
+        { label: 'D', content: '' }
+      ], 
+      correct_answer: 'A', 
+      explanation: '' 
+    }]
+  });
 
   useEffect(() => {
     fetchChapters();
@@ -282,7 +297,7 @@ export default function Admin({ onBack }: AdminProps) {
     }
   };
 
-  const addContent = async (type: 'formula' | 'example' | 'practice', payload: any) => {
+  const addContent = async (type: 'formula' | 'example' | 'practice' | 'quiz', payload: any) => {
     // Cấu trúc dữ liệu gửi lên server
     let body = { ...payload, lesson_id: selectedLessonId };
     
@@ -306,6 +321,12 @@ export default function Admin({ onBack }: AdminProps) {
       delete body.hint;
       delete body.answer;
     }
+
+    if (type === 'quiz') {
+      if (body.items && Array.isArray(body.items)) {
+        body.items = body.items.filter((item: any) => item.question && item.question.trim() !== '');
+      }
+    }
     
     const res = await fetch(`/api/content/${type}`, {
       method: 'POST',
@@ -315,7 +336,7 @@ export default function Admin({ onBack }: AdminProps) {
     if (selectedLessonId) fetchLessonDetails(selectedLessonId);
   };
 
-  const deleteContent = async (type: 'formula' | 'example' | 'practice', id: number) => {
+  const deleteContent = async (type: 'formula' | 'example' | 'practice' | 'quiz', id: number) => {
     await fetch(`/api/content/${type}/${id}`, { method: 'DELETE' });
     if (selectedLessonId) fetchLessonDetails(selectedLessonId);
   };
@@ -351,7 +372,7 @@ export default function Admin({ onBack }: AdminProps) {
     );
   }
 
-  const updateContent = async (type: 'formula' | 'example' | 'practice', id: number, payload: any) => {
+  const updateContent = async (type: 'formula' | 'example' | 'practice' | 'quiz', id: number, payload: any) => {
     // Cấu trúc dữ liệu gửi lên server
     let body = { ...payload };
     
@@ -366,6 +387,12 @@ export default function Admin({ onBack }: AdminProps) {
       delete body.problem;
       delete body.hint;
       delete body.answer;
+    }
+
+    if (type === 'quiz') {
+      if (body.items && Array.isArray(body.items)) {
+        body.items = body.items.filter((item: any) => item.question && item.question.trim() !== '');
+      }
     }
 
     const res = await fetch(`/api/content/${type}/${id}`, {
@@ -948,116 +975,118 @@ export default function Admin({ onBack }: AdminProps) {
                     <Dumbbell size={20} className="text-zinc-400" />
                     Bài tập Tự rèn
                   </h3>
+                  {/* ... existing practice code ... */}
+                </section>
+
+                {/* 4. Quizzes */}
+                <section className="space-y-4">
+                  <h3 className="font-bold flex items-center gap-2">
+                    <ListChecks size={20} className="text-zinc-400" />
+                    Trắc nghiệm
+                  </h3>
                   <div className="space-y-4">
-                    {(lessonData?.practice || []).map(p => (
-                      <div key={p.id} className="bg-white border border-zinc-200 rounded-2xl p-6 space-y-4 relative group">
+                    {(lessonData?.quizzes || []).map(q => (
+                      <div key={q.id} className="bg-white border border-zinc-200 rounded-2xl p-6 space-y-4 relative group">
                         <div className="absolute top-4 right-4 flex items-center gap-2">
                           <button 
                             onClick={() => setEditingContent({
-                              type: 'practice', 
-                              id: p.id, 
-                              data: { 
-                                ...p, 
-                                items: p.items || [{ problem: (p as any).problem || '', hint: (p as any).hint || '', answer: (p as any).answer || '' }] 
-                              }
+                              type: 'quiz', 
+                              id: q.id, 
+                              data: { ...q }
                             })}
                             className="text-zinc-400 hover:text-zinc-900"
                           >
                             <Edit2 size={18} />
                           </button>
-                          <button onClick={() => deleteContent('practice', p.id)} className="text-zinc-400 hover:text-red-500">
+                          <button onClick={() => deleteContent('quiz', q.id)} className="text-zinc-400 hover:text-red-500">
                             <Trash2 size={18} />
                           </button>
                         </div>
-                        
-                        {editingContent?.type === 'practice' && editingContent?.id === p.id ? (
+
+                        {editingContent?.type === 'quiz' && editingContent?.id === q.id ? (
                           <div className="space-y-4 pt-4">
                             <div className="space-y-1">
-                              <div className="flex items-center justify-between">
-                                <label className="text-[10px] font-bold text-zinc-400 uppercase">Tiêu đề (hỗ trợ LaTeX)</label>
-                                <ImageUploader onUpload={(url) => setEditingContent({...editingContent, data: {...editingContent.data, title: editingContent.data.title + `\n![image](${url})`}})} />
-                              </div>
-                              <textarea 
-                                className="w-full px-4 py-2 bg-zinc-50 rounded-xl outline-none text-sm min-h-[60px] border border-zinc-200"
+                              <label className="text-[10px] font-bold text-zinc-400 uppercase">Tiêu đề phần trắc nghiệm</label>
+                              <input 
+                                className="w-full px-4 py-2 bg-zinc-50 rounded-xl outline-none text-sm border border-zinc-200"
                                 value={editingContent.data.title}
                                 onChange={(e) => setEditingContent({...editingContent, data: {...editingContent.data, title: e.target.value}})}
                               />
                             </div>
                             
-                            <div className="space-y-4">
+                            <div className="space-y-6">
                               {(editingContent.data.items || []).map((item: any, i: number) => (
-                                <div key={i} className="p-4 border border-zinc-100 rounded-2xl bg-zinc-50/50 space-y-3 relative">
-                                  {(editingContent.data.items || []).length > 1 && (
-                                    <button 
-                                      onClick={() => {
-                                        const newItems = [...editingContent.data.items];
-                                        newItems.splice(i, 1);
-                                        setEditingContent({...editingContent, data: {...editingContent.data, items: newItems}});
-                                      }}
-                                      className="absolute top-2 right-2 text-zinc-300 hover:text-red-500"
-                                    >
-                                      <X size={14} />
-                                    </button>
-                                  )}
+                                <div key={i} className="p-4 border border-zinc-100 rounded-2xl bg-zinc-50/50 space-y-4 relative">
+                                  <button 
+                                    onClick={() => {
+                                      const newItems = [...editingContent.data.items];
+                                      newItems.splice(i, 1);
+                                      setEditingContent({...editingContent, data: {...editingContent.data, items: newItems}});
+                                    }}
+                                    className="absolute top-2 right-2 text-zinc-300 hover:text-red-500"
+                                  >
+                                    <X size={14} />
+                                  </button>
                                   <div className="space-y-1">
                                     <div className="flex items-center justify-between">
-                                      <label className="text-[10px] font-bold text-zinc-400 uppercase">Bài tập {i + 1} - Đề bài</label>
+                                      <label className="text-[10px] font-bold text-zinc-400 uppercase">Câu hỏi {i + 1}</label>
                                       <ImageUploader onUpload={(url) => {
                                         const newItems = [...editingContent.data.items];
-                                        newItems[i].problem += `\n![image](${url})`;
+                                        newItems[i].question += `\n![image](${url})`;
                                         setEditingContent({...editingContent, data: {...editingContent.data, items: newItems}});
                                       }} />
                                     </div>
                                     <textarea 
-                                      placeholder="Nhập đề bài..." 
-                                      className="w-full px-4 py-2 bg-white rounded-xl outline-none text-sm min-h-[80px] border border-zinc-200"
-                                      value={item.problem}
+                                      className="w-full px-4 py-2 bg-white rounded-xl outline-none text-sm min-h-[60px] border border-zinc-200"
+                                      value={item.question}
                                       onChange={(e) => {
                                         const newItems = [...editingContent.data.items];
-                                        newItems[i].problem = e.target.value;
+                                        newItems[i].question = e.target.value;
                                         setEditingContent({...editingContent, data: {...editingContent.data, items: newItems}});
                                       }}
                                     />
                                   </div>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {(item.options || []).map((opt: any, optIdx: number) => (
+                                      <div key={optIdx} className="space-y-1">
+                                        <label className="text-[10px] font-bold text-zinc-400 uppercase">Lựa chọn {opt.label}</label>
+                                        <input 
+                                          type="text"
+                                          className="w-full px-4 py-2 bg-white rounded-xl outline-none text-sm border border-zinc-200"
+                                          value={opt.content}
+                                          onChange={(e) => {
+                                            const newItems = [...editingContent.data.items];
+                                            newItems[i].options[optIdx].content = e.target.value;
+                                            setEditingContent({...editingContent, data: {...editingContent.data, items: newItems}});
+                                          }}
+                                        />
+                                      </div>
+                                    ))}
+                                  </div>
                                   <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-1">
-                                      <div className="flex items-center justify-between">
-                                        <label className="text-[10px] font-bold text-zinc-400 uppercase">Gợi ý</label>
-                                        <ImageUploader onUpload={(url) => {
-                                          const newItems = [...editingContent.data.items];
-                                          newItems[i].hint += `\n![image](${url})`;
-                                          setEditingContent({...editingContent, data: {...editingContent.data, items: newItems}});
-                                        }} />
-                                      </div>
-                                      <input 
-                                        type="text" 
-                                        placeholder="Gợi ý..." 
+                                      <label className="text-[10px] font-bold text-zinc-400 uppercase">Đáp án đúng</label>
+                                      <select 
                                         className="w-full px-4 py-2 bg-white rounded-xl outline-none text-sm border border-zinc-200"
-                                        value={item.hint}
+                                        value={item.correct_answer}
                                         onChange={(e) => {
                                           const newItems = [...editingContent.data.items];
-                                          newItems[i].hint = e.target.value;
+                                          newItems[i].correct_answer = e.target.value;
                                           setEditingContent({...editingContent, data: {...editingContent.data, items: newItems}});
                                         }}
-                                      />
+                                      >
+                                        {['A', 'B', 'C', 'D'].map(l => <option key={l} value={l}>{l}</option>)}
+                                      </select>
                                     </div>
                                     <div className="space-y-1">
-                                      <div className="flex items-center justify-between">
-                                        <label className="text-[10px] font-bold text-zinc-400 uppercase">Đáp số</label>
-                                        <ImageUploader onUpload={(url) => {
-                                          const newItems = [...editingContent.data.items];
-                                          newItems[i].answer += `\n![image](${url})`;
-                                          setEditingContent({...editingContent, data: {...editingContent.data, items: newItems}});
-                                        }} />
-                                      </div>
+                                      <label className="text-[10px] font-bold text-zinc-400 uppercase">Giải thích (tùy chọn)</label>
                                       <input 
-                                        type="text" 
-                                        placeholder="Đáp số..." 
+                                        type="text"
                                         className="w-full px-4 py-2 bg-white rounded-xl outline-none text-sm border border-zinc-200"
-                                        value={item.answer}
+                                        value={item.explanation || ''}
                                         onChange={(e) => {
                                           const newItems = [...editingContent.data.items];
-                                          newItems[i].answer = e.target.value;
+                                          newItems[i].explanation = e.target.value;
                                           setEditingContent({...editingContent, data: {...editingContent.data, items: newItems}});
                                         }}
                                       />
@@ -1066,16 +1095,24 @@ export default function Admin({ onBack }: AdminProps) {
                                 </div>
                               ))}
                               <button 
-                                onClick={() => setEditingContent({...editingContent, data: {...editingContent.data, items: [...(editingContent.data.items || []), { problem: '', hint: '', answer: '' }]}})}
+                                onClick={() => {
+                                  const newItems = [...(editingContent.data.items || []), { 
+                                    question: '', 
+                                    options: [{label: 'A', content: ''}, {label: 'B', content: ''}, {label: 'C', content: ''}, {label: 'D', content: ''}], 
+                                    correct_answer: 'A', 
+                                    explanation: '' 
+                                  }];
+                                  setEditingContent({...editingContent, data: {...editingContent.data, items: newItems}});
+                                }}
                                 className="w-full py-2 border-2 border-dashed border-zinc-200 rounded-xl text-zinc-400 text-xs font-bold hover:border-zinc-400 hover:text-zinc-600 transition-all"
                               >
-                                + Thêm bài tập
+                                + Thêm câu hỏi trắc nghiệm
                               </button>
                             </div>
 
                             <div className="flex gap-2">
                               <button 
-                                onClick={() => updateContent('practice', p.id, editingContent.data)}
+                                onClick={() => updateContent('quiz', q.id, editingContent.data)}
                                 className="flex-1 py-2 bg-zinc-900 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2"
                               >
                                 <Check size={16} /> Lưu thay đổi
@@ -1090,90 +1127,46 @@ export default function Admin({ onBack }: AdminProps) {
                           </div>
                         ) : (
                           <>
-                            <div className="markdown-body prose prose-zinc max-w-full mb-4 break-words">
-                              <Markdown remarkPlugins={[remarkMath, remarkBreaks]} rehypePlugins={[rehypeKatex]}>
-                                {p.title}
-                              </Markdown>
-                            </div>
+                            <div className="font-bold text-zinc-900 mb-2">{q.title}</div>
                             <div className="space-y-4">
-                              {(p.items || []).map((item, i) => (
-                                <div key={i} className="relative group/item space-y-2">
-                                  <button 
-                                    onClick={() => {
-                                      if (window.confirm('Bạn có chắc muốn xóa bài tập này?')) {
-                                        const newItems = [...(p.items || [])];
-                                        newItems.splice(i, 1);
-                                        updateContent('practice', p.id, { ...p, items: newItems });
-                                      }
-                                    }}
-                                    className="absolute -right-2 -top-2 w-6 h-6 bg-white border border-zinc-200 rounded-full flex items-center justify-center text-zinc-400 hover:text-red-500 hover:border-red-200 shadow-sm transition-all z-10"
-                                    title="Xóa bài tập này"
-                                  >
-                                    <X size={14} />
-                                  </button>
-                                  <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100">
-                                    <p className="font-bold text-blue-600/60 text-[10px] uppercase mb-1">Đề bài {(p.items || []).length > 1 ? i + 1 : ''}</p>
-                                    <div className="markdown-body prose prose-sm prose-zinc max-w-none">
-                                      <Markdown remarkPlugins={[remarkMath, remarkBreaks]} rehypePlugins={[rehypeKatex]}>{item.problem}</Markdown>
-                                    </div>
-                                  </div>
-                                  <div className="flex gap-2">
-                                    <div className="flex-1 p-2 bg-indigo-50 rounded-lg text-[11px] text-indigo-600 italic">
-                                      <div className="markdown-body prose prose-sm max-w-none">
-                                        <Markdown remarkPlugins={[remarkMath, remarkBreaks]} rehypePlugins={[rehypeKatex]}>{`Gợi ý: ${item.hint}`}</Markdown>
+                              {(q.items || []).map((item, i) => (
+                                <div key={i} className="p-3 bg-zinc-50 rounded-xl border border-zinc-100 text-sm">
+                                  <div className="font-medium mb-2">Câu {i + 1}: {item.question}</div>
+                                  <div className="grid grid-cols-2 gap-2 text-xs text-zinc-500">
+                                    {(item.options || []).map((opt, oIdx) => (
+                                      <div key={oIdx} className={item.correct_answer === opt.label ? 'text-emerald-600 font-bold' : ''}>
+                                        {opt.label}. {opt.content}
                                       </div>
-                                    </div>
-                                    <div className="flex-1 p-2 bg-emerald-50 rounded-lg text-[11px] text-emerald-600 font-bold">
-                                      <div className="markdown-body prose prose-sm max-w-none">
-                                        <Markdown remarkPlugins={[remarkMath, remarkBreaks]} rehypePlugins={[rehypeKatex]}>{`Đáp số: ${item.answer}`}</Markdown>
-                                      </div>
-                                    </div>
+                                    ))}
                                   </div>
                                 </div>
                               ))}
-                              {(!p.items || p.items.length === 0) && (
-                                <div className="relative group/item space-y-2">
-                                  <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100">
-                                    <p className="font-bold text-blue-600/60 text-[10px] uppercase mb-1">Đề bài</p>
-                                    <div className="markdown-body prose prose-sm prose-zinc max-w-none">
-                                      <Markdown remarkPlugins={[remarkMath, remarkBreaks]} rehypePlugins={[rehypeKatex]}>{(p as any).problem}</Markdown>
-                                    </div>
-                                  </div>
-                                  <div className="flex gap-2">
-                                    <div className="flex-1 p-2 bg-indigo-50 rounded-lg text-[11px] text-indigo-600 italic">Gợi ý: {(p as any).hint}</div>
-                                    <div className="flex-1 p-2 bg-emerald-50 rounded-lg text-[11px] text-emerald-600 font-bold">Đáp số: {(p as any).answer}</div>
-                                  </div>
-                                </div>
-                              )}
                             </div>
                           </>
                         )}
                       </div>
                     ))}
-                    
+
                     <div className="bg-white border-2 border-dashed border-zinc-200 rounded-2xl p-6 space-y-6">
                       <div className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <label className="text-[10px] font-bold text-zinc-400 uppercase">Tiêu đề bài tập (hỗ trợ LaTeX)</label>
-                          <ImageUploader onUpload={(url) => setNewPractice({...newPractice, title: newPractice.title + `\n![image](${url})`})} />
-                        </div>
-                        <textarea 
-                          placeholder="Nhập tiêu đề (ví dụ: Câu 1, Bài 1...)" 
-                          className="w-full px-4 py-2 bg-zinc-50 rounded-xl outline-none text-sm min-h-[60px]"
-                          value={newPractice.title}
-                          onChange={(e) => setNewPractice({...newPractice, title: e.target.value})}
+                        <label className="text-[10px] font-bold text-zinc-400 uppercase">Tiêu đề phần trắc nghiệm</label>
+                        <input 
+                          placeholder="Nhập tiêu đề (ví dụ: Trắc nghiệm ôn tập...)" 
+                          className="w-full px-4 py-2 bg-zinc-50 rounded-xl outline-none text-sm"
+                          value={newQuiz.title}
+                          onChange={(e) => setNewQuiz({...newQuiz, title: e.target.value})}
                         />
                       </div>
 
-                      <div className="space-y-4">
-                        {newPractice.items.map((item, i) => (
-                          <div key={i} className="p-4 border border-zinc-100 rounded-2xl bg-zinc-50/50 space-y-3 relative">
-                            {newPractice.items.length > 1 && (
+                      <div className="space-y-6">
+                        {newQuiz.items.map((item, i) => (
+                          <div key={i} className="p-4 border border-zinc-100 rounded-2xl bg-zinc-50/50 space-y-4 relative">
+                            {newQuiz.items.length > 1 && (
                               <button 
                                 onClick={() => {
-                                  const newItems = [...newPractice.items];
+                                  const newItems = [...newQuiz.items];
                                   newItems.splice(i, 1);
-                                  setNewPractice({...newPractice, items: newItems});
+                                  setNewQuiz({...newQuiz, items: newItems});
                                 }}
                                 className="absolute top-2 right-2 text-zinc-300 hover:text-red-500"
                               >
@@ -1182,64 +1175,68 @@ export default function Admin({ onBack }: AdminProps) {
                             )}
                             <div className="space-y-1">
                               <div className="flex items-center justify-between">
-                                <label className="text-[10px] font-bold text-zinc-400 uppercase">Bài tập {i + 1} - Đề bài</label>
+                                <label className="text-[10px] font-bold text-zinc-400 uppercase">Câu hỏi {i + 1}</label>
                                 <ImageUploader onUpload={(url) => {
-                                  const newItems = [...newPractice.items];
-                                  newItems[i].problem += `\n![image](${url})`;
-                                  setNewPractice({...newPractice, items: newItems});
+                                  const newItems = [...newQuiz.items];
+                                  newItems[i].question += `\n![image](${url})`;
+                                  setNewQuiz({...newQuiz, items: newItems});
                                 }} />
                               </div>
                               <textarea 
-                                placeholder="Nhập đề bài..." 
-                                className="w-full px-4 py-2 bg-white rounded-xl outline-none text-sm min-h-[80px] border border-zinc-200"
-                                value={item.problem}
+                                placeholder="Nhập câu hỏi..." 
+                                className="w-full px-4 py-2 bg-white rounded-xl outline-none text-sm min-h-[60px] border border-zinc-200"
+                                value={item.question}
                                 onChange={(e) => {
-                                  const newItems = [...newPractice.items];
-                                  newItems[i].problem = e.target.value;
-                                  setNewPractice({...newPractice, items: newItems});
+                                  const newItems = [...newQuiz.items];
+                                  newItems[i].question = e.target.value;
+                                  setNewQuiz({...newQuiz, items: newItems});
                                 }}
                               />
                             </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {item.options.map((opt, optIdx) => (
+                                <div key={optIdx} className="space-y-1">
+                                  <label className="text-[10px] font-bold text-zinc-400 uppercase">Lựa chọn {opt.label}</label>
+                                  <input 
+                                    type="text"
+                                    placeholder={`Nội dung lựa chọn ${opt.label}...`}
+                                    className="w-full px-4 py-2 bg-white rounded-xl outline-none text-sm border border-zinc-200"
+                                    value={opt.content}
+                                    onChange={(e) => {
+                                      const newItems = [...newQuiz.items];
+                                      newItems[i].options[optIdx].content = e.target.value;
+                                      setNewQuiz({...newQuiz, items: newItems});
+                                    }}
+                                  />
+                                </div>
+                              ))}
+                            </div>
                             <div className="grid grid-cols-2 gap-4">
                               <div className="space-y-1">
-                                <div className="flex items-center justify-between">
-                                  <label className="text-[10px] font-bold text-zinc-400 uppercase">Gợi ý</label>
-                                  <ImageUploader onUpload={(url) => {
-                                    const newItems = [...newPractice.items];
-                                    newItems[i].hint += `\n![image](${url})`;
-                                    setNewPractice({...newPractice, items: newItems});
-                                  }} />
-                                </div>
-                                <input 
-                                  type="text" 
-                                  placeholder="Gợi ý..." 
+                                <label className="text-[10px] font-bold text-zinc-400 uppercase">Đáp án đúng</label>
+                                <select 
                                   className="w-full px-4 py-2 bg-white rounded-xl outline-none text-sm border border-zinc-200"
-                                  value={item.hint}
+                                  value={item.correct_answer}
                                   onChange={(e) => {
-                                    const newItems = [...newPractice.items];
-                                    newItems[i].hint = e.target.value;
-                                    setNewPractice({...newPractice, items: newItems});
+                                    const newItems = [...newQuiz.items];
+                                    newItems[i].correct_answer = e.target.value;
+                                    setNewQuiz({...newQuiz, items: newItems});
                                   }}
-                                />
+                                >
+                                  {['A', 'B', 'C', 'D'].map(l => <option key={l} value={l}>{l}</option>)}
+                                </select>
                               </div>
                               <div className="space-y-1">
-                                <div className="flex items-center justify-between">
-                                  <label className="text-[10px] font-bold text-zinc-400 uppercase">Đáp số</label>
-                                  <ImageUploader onUpload={(url) => {
-                                    const newItems = [...newPractice.items];
-                                    newItems[i].answer += `\n![image](${url})`;
-                                    setNewPractice({...newPractice, items: newItems});
-                                  }} />
-                                </div>
+                                <label className="text-[10px] font-bold text-zinc-400 uppercase">Giải thích (tùy chọn)</label>
                                 <input 
-                                  type="text" 
-                                  placeholder="Đáp số..." 
+                                  type="text"
+                                  placeholder="Giải thích tại sao..."
                                   className="w-full px-4 py-2 bg-white rounded-xl outline-none text-sm border border-zinc-200"
-                                  value={item.answer}
+                                  value={item.explanation}
                                   onChange={(e) => {
-                                    const newItems = [...newPractice.items];
-                                    newItems[i].answer = e.target.value;
-                                    setNewPractice({...newPractice, items: newItems});
+                                    const newItems = [...newQuiz.items];
+                                    newItems[i].explanation = e.target.value;
+                                    setNewQuiz({...newQuiz, items: newItems});
                                   }}
                                 />
                               </div>
@@ -1247,26 +1244,39 @@ export default function Admin({ onBack }: AdminProps) {
                           </div>
                         ))}
                         <button 
-                          onClick={() => setNewPractice({...newPractice, items: [...newPractice.items, { problem: '', hint: '', answer: '' }]})}
+                          onClick={() => setNewQuiz({...newQuiz, items: [...newQuiz.items, { 
+                            question: '', 
+                            options: [{label: 'A', content: ''}, {label: 'B', content: ''}, {label: 'C', content: ''}, {label: 'D', content: ''}], 
+                            correct_answer: 'A', 
+                            explanation: '' 
+                          }]})}
                           className="w-full py-2 border-2 border-dashed border-zinc-200 rounded-xl text-zinc-400 text-xs font-bold hover:border-zinc-400 hover:text-zinc-600 transition-all"
                         >
-                          + Thêm bài tập
+                          + Thêm câu hỏi trắc nghiệm
                         </button>
                       </div>
 
                       <button 
                         onClick={() => {
-                          const filteredItems = newPractice.items.filter(item => item.problem.trim() !== '');
-                          if (newPractice.title && filteredItems.length > 0) {
-                            addContent('practice', { ...newPractice, items: filteredItems });
-                            setNewPractice({ title: '', items: [{ problem: '', hint: '', answer: '' }] });
+                          const filteredItems = newQuiz.items.filter(item => item.question.trim() !== '');
+                          if (newQuiz.title && filteredItems.length > 0) {
+                            addContent('quiz', { ...newQuiz, items: filteredItems });
+                            setNewQuiz({
+                              title: '',
+                              items: [{ 
+                                question: '', 
+                                options: [{label: 'A', content: ''}, {label: 'B', content: ''}, {label: 'C', content: ''}, {label: 'D', content: ''}], 
+                                correct_answer: 'A', 
+                                explanation: '' 
+                              }]
+                            });
                           } else {
-                            alert("Vui lòng nhập tiêu đề và ít nhất một đề bài.");
+                            alert("Vui lòng nhập tiêu đề và ít nhất một câu hỏi.");
                           }
                         }}
                         className="w-full py-3 bg-zinc-900 text-white rounded-xl font-bold text-sm hover:bg-zinc-800 transition-colors"
                       >
-                        Lưu Bài tập tự rèn
+                        Lưu phần Trắc nghiệm
                       </button>
                     </div>
                   </div>
