@@ -27,40 +27,124 @@ interface AdminProps {
   onBack: () => void;
 }
 
-function ImageUploader({ onUpload }: { onUpload: (url: string) => void }) {
+function ImageUploader({ onUpload, className = "" }: { onUpload: (url: string) => void, className?: string }) {
+  const [isUploading, setIsUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     
+    setIsUploading(true);
     const formData = new FormData();
     formData.append('image', file);
     
-    const res = await fetch('/api/upload-image', {
-      method: 'POST',
-      body: formData
-    });
-    
-    if (res.ok) {
-      const { url } = await res.json();
-      onUpload(url);
-    } else {
-      alert("Upload ảnh thất bại!");
+    try {
+      const res = await fetch('/api/upload-image', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (res.ok) {
+        const { url } = await res.json();
+        onUpload(url);
+      } else {
+        alert("Upload ảnh thất bại!");
+      }
+    } catch (error) {
+      alert("Lỗi kết nối server!");
+    } finally {
+      setIsUploading(false);
     }
   };
   
   return (
-    <>
+    <div className={className}>
       <input type="file" ref={inputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
       <button 
         type="button"
+        disabled={isUploading}
         onClick={() => inputRef.current?.click()}
-        className="text-xs text-zinc-500 hover:text-zinc-900 flex items-center gap-1"
+        className="text-[10px] font-bold text-zinc-400 hover:text-zinc-900 flex items-center gap-1 uppercase tracking-wider"
       >
-        <ImageIcon size={14} /> Upload ảnh
+        {isUploading ? (
+          <div className="w-3 h-3 border border-zinc-300 border-t-zinc-900 rounded-full animate-spin" />
+        ) : (
+          <ImageIcon size={12} />
+        )}
+        {isUploading ? "Đang tải..." : "Chèn ảnh"}
       </button>
-    </>
+    </div>
+  );
+}
+
+function FloatingImageTool() {
+  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append('image', file);
+    try {
+      const res = await fetch('/api/upload-image', { method: 'POST', body: formData });
+      if (res.ok) {
+        const { url } = await res.json();
+        setUploadedUrl(url);
+      }
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const copyToClipboard = () => {
+    if (uploadedUrl) {
+      navigator.clipboard.writeText(`![image](${uploadedUrl})`);
+      alert("Đã copy mã hình ảnh! Bạn có thể dán vào bài viết.");
+    }
+  };
+
+  return (
+    <div className="fixed bottom-8 right-8 z-50 flex flex-col items-end gap-3">
+      {uploadedUrl && (
+        <div className="bg-white p-3 rounded-2xl shadow-2xl border border-zinc-200 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-4">
+          <img src={uploadedUrl} className="w-12 h-12 object-cover rounded-lg border border-zinc-100" />
+          <div className="flex flex-col gap-1">
+            <p className="text-[10px] font-bold text-zinc-400 uppercase">Ảnh đã tải lên</p>
+            <button 
+              onClick={copyToClipboard}
+              className="px-3 py-1.5 bg-zinc-900 text-white text-xs font-bold rounded-lg hover:bg-zinc-800 transition-colors flex items-center gap-2"
+            >
+              Copy mã ảnh
+            </button>
+          </div>
+          <button onClick={() => setUploadedUrl(null)} className="p-1 text-zinc-400 hover:text-zinc-900">
+            <X size={18} />
+          </button>
+        </div>
+      )}
+      <input type="file" ref={inputRef} onChange={handleUpload} className="hidden" accept="image/*" />
+      <button 
+        onClick={() => inputRef.current?.click()}
+        disabled={isUploading}
+        className="w-14 h-14 bg-zinc-900 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-all active:scale-95 group relative"
+        title="Upload ảnh nhanh"
+      >
+        {isUploading ? (
+          <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+        ) : (
+          <ImageIcon size={28} />
+        )}
+        {!isUploading && (
+          <div className="absolute right-full mr-3 px-3 py-1.5 bg-zinc-900 text-white text-[10px] font-bold rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none uppercase tracking-widest">
+            Upload ảnh nhanh
+          </div>
+        )}
+      </button>
+    </div>
   );
 }
 
@@ -604,8 +688,10 @@ export default function Admin({ onBack }: AdminProps) {
                         {editingContent?.type === 'example' && editingContent?.id === ex.id ? (
                           <div className="space-y-4 pt-4">
                             <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-zinc-400 uppercase">Mô tả dạng bài & phương pháp</label>
-                              <ImageUploader onUpload={(url) => setEditingContent({...editingContent, data: {...editingContent.data, title: editingContent.data.title + `\n![image](${url})`}})} />
+                              <div className="flex items-center justify-between">
+                                <label className="text-[10px] font-bold text-zinc-400 uppercase">Mô tả dạng bài & phương pháp</label>
+                                <ImageUploader onUpload={(url) => setEditingContent({...editingContent, data: {...editingContent.data, title: editingContent.data.title + `\n![image](${url})`}})} />
+                              </div>
                               <textarea 
                                 className="w-full px-4 py-2 bg-zinc-50 rounded-xl outline-none text-sm border border-zinc-200 min-h-[120px]"
                                 value={editingContent.data.title}
@@ -627,7 +713,14 @@ export default function Admin({ onBack }: AdminProps) {
                                     <X size={14} />
                                   </button>
                                   <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-zinc-400 uppercase">Ví dụ {i + 1} - Đề bài</label>
+                                    <div className="flex items-center justify-between">
+                                      <label className="text-[10px] font-bold text-zinc-400 uppercase">Ví dụ {i + 1} - Đề bài</label>
+                                      <ImageUploader onUpload={(url) => {
+                                        const newItems = [...editingContent.data.items];
+                                        newItems[i].problem += `\n![image](${url})`;
+                                        setEditingContent({...editingContent, data: {...editingContent.data, items: newItems}});
+                                      }} />
+                                    </div>
                                     <textarea 
                                       className="w-full px-4 py-2 bg-white rounded-xl outline-none text-sm min-h-[80px] border border-zinc-200"
                                       value={item.problem}
@@ -639,7 +732,14 @@ export default function Admin({ onBack }: AdminProps) {
                                     />
                                   </div>
                                   <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-zinc-400 uppercase">Ví dụ {i + 1} - Lời giải</label>
+                                    <div className="flex items-center justify-between">
+                                      <label className="text-[10px] font-bold text-zinc-400 uppercase">Ví dụ {i + 1} - Lời giải</label>
+                                      <ImageUploader onUpload={(url) => {
+                                        const newItems = [...editingContent.data.items];
+                                        newItems[i].solution += `\n![image](${url})`;
+                                        setEditingContent({...editingContent, data: {...editingContent.data, items: newItems}});
+                                      }} />
+                                    </div>
                                     <textarea 
                                       className="w-full px-4 py-2 bg-white rounded-xl outline-none text-sm min-h-[80px] border border-zinc-200"
                                       value={item.solution}
@@ -750,8 +850,10 @@ export default function Admin({ onBack }: AdminProps) {
                     
                     <div className="bg-white border-2 border-dashed border-zinc-200 rounded-2xl p-6 space-y-6">
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-zinc-400 uppercase">Mô tả dạng bài & phương pháp</label>
-                        <ImageUploader onUpload={(url) => setNewExample({...newExample, title: newExample.title + `\n![image](${url})`})} />
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10px] font-bold text-zinc-400 uppercase">Mô tả dạng bài & phương pháp</label>
+                          <ImageUploader onUpload={(url) => setNewExample({...newExample, title: newExample.title + `\n![image](${url})`})} />
+                        </div>
                         <textarea 
                           placeholder="Nhập mô tả dạng bài và phương pháp giải (hỗ trợ LaTeX)..." 
                           className="w-full px-4 py-2 bg-zinc-50 rounded-xl outline-none text-sm min-h-[120px]"
@@ -776,7 +878,14 @@ export default function Admin({ onBack }: AdminProps) {
                               </button>
                             )}
                             <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-zinc-400 uppercase">Ví dụ minh họa {i + 1} - Đề bài</label>
+                              <div className="flex items-center justify-between">
+                                <label className="text-[10px] font-bold text-zinc-400 uppercase">Ví dụ minh họa {i + 1} - Đề bài</label>
+                                <ImageUploader onUpload={(url) => {
+                                  const newItems = [...newExample.items];
+                                  newItems[i].problem += `\n![image](${url})`;
+                                  setNewExample({...newExample, items: newItems});
+                                }} />
+                              </div>
                               <textarea 
                                 placeholder="Nhập đề bài..." 
                                 className="w-full px-4 py-2 bg-white rounded-xl outline-none text-sm min-h-[80px] border border-zinc-200"
@@ -789,7 +898,14 @@ export default function Admin({ onBack }: AdminProps) {
                               />
                             </div>
                             <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-zinc-400 uppercase">Ví dụ minh họa {i + 1} - Lời giải</label>
+                              <div className="flex items-center justify-between">
+                                <label className="text-[10px] font-bold text-zinc-400 uppercase">Ví dụ minh họa {i + 1} - Lời giải</label>
+                                <ImageUploader onUpload={(url) => {
+                                  const newItems = [...newExample.items];
+                                  newItems[i].solution += `\n![image](${url})`;
+                                  setNewExample({...newExample, items: newItems});
+                                }} />
+                              </div>
                               <textarea 
                                 placeholder="Nhập lời giải..." 
                                 className="w-full px-4 py-2 bg-white rounded-xl outline-none text-sm min-h-[80px] border border-zinc-200"
@@ -857,8 +973,10 @@ export default function Admin({ onBack }: AdminProps) {
                         {editingContent?.type === 'practice' && editingContent?.id === p.id ? (
                           <div className="space-y-4 pt-4">
                             <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-zinc-400 uppercase">Tiêu đề (hỗ trợ LaTeX)</label>
-                              <ImageUploader onUpload={(url) => setEditingContent({...editingContent, data: {...editingContent.data, title: editingContent.data.title + `\n![image](${url})`}})} />
+                              <div className="flex items-center justify-between">
+                                <label className="text-[10px] font-bold text-zinc-400 uppercase">Tiêu đề (hỗ trợ LaTeX)</label>
+                                <ImageUploader onUpload={(url) => setEditingContent({...editingContent, data: {...editingContent.data, title: editingContent.data.title + `\n![image](${url})`}})} />
+                              </div>
                               <textarea 
                                 className="w-full px-4 py-2 bg-zinc-50 rounded-xl outline-none text-sm min-h-[60px] border border-zinc-200"
                                 value={editingContent.data.title}
@@ -882,7 +1000,14 @@ export default function Admin({ onBack }: AdminProps) {
                                     </button>
                                   )}
                                   <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-zinc-400 uppercase">Bài tập {i + 1} - Đề bài</label>
+                                    <div className="flex items-center justify-between">
+                                      <label className="text-[10px] font-bold text-zinc-400 uppercase">Bài tập {i + 1} - Đề bài</label>
+                                      <ImageUploader onUpload={(url) => {
+                                        const newItems = [...editingContent.data.items];
+                                        newItems[i].problem += `\n![image](${url})`;
+                                        setEditingContent({...editingContent, data: {...editingContent.data, items: newItems}});
+                                      }} />
+                                    </div>
                                     <textarea 
                                       placeholder="Nhập đề bài..." 
                                       className="w-full px-4 py-2 bg-white rounded-xl outline-none text-sm min-h-[80px] border border-zinc-200"
@@ -896,7 +1021,14 @@ export default function Admin({ onBack }: AdminProps) {
                                   </div>
                                   <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-1">
-                                      <label className="text-[10px] font-bold text-zinc-400 uppercase">Gợi ý</label>
+                                      <div className="flex items-center justify-between">
+                                        <label className="text-[10px] font-bold text-zinc-400 uppercase">Gợi ý</label>
+                                        <ImageUploader onUpload={(url) => {
+                                          const newItems = [...editingContent.data.items];
+                                          newItems[i].hint += `\n![image](${url})`;
+                                          setEditingContent({...editingContent, data: {...editingContent.data, items: newItems}});
+                                        }} />
+                                      </div>
                                       <input 
                                         type="text" 
                                         placeholder="Gợi ý..." 
@@ -910,7 +1042,14 @@ export default function Admin({ onBack }: AdminProps) {
                                       />
                                     </div>
                                     <div className="space-y-1">
-                                      <label className="text-[10px] font-bold text-zinc-400 uppercase">Đáp số</label>
+                                      <div className="flex items-center justify-between">
+                                        <label className="text-[10px] font-bold text-zinc-400 uppercase">Đáp số</label>
+                                        <ImageUploader onUpload={(url) => {
+                                          const newItems = [...editingContent.data.items];
+                                          newItems[i].answer += `\n![image](${url})`;
+                                          setEditingContent({...editingContent, data: {...editingContent.data, items: newItems}});
+                                        }} />
+                                      </div>
                                       <input 
                                         type="text" 
                                         placeholder="Đáp số..." 
@@ -1014,8 +1153,10 @@ export default function Admin({ onBack }: AdminProps) {
                     
                     <div className="bg-white border-2 border-dashed border-zinc-200 rounded-2xl p-6 space-y-6">
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-zinc-400 uppercase">Tiêu đề bài tập (hỗ trợ LaTeX)</label>
-                        <ImageUploader onUpload={(url) => setNewPractice({...newPractice, title: newPractice.title + `\n![image](${url})`})} />
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10px] font-bold text-zinc-400 uppercase">Tiêu đề bài tập (hỗ trợ LaTeX)</label>
+                          <ImageUploader onUpload={(url) => setNewPractice({...newPractice, title: newPractice.title + `\n![image](${url})`})} />
+                        </div>
                         <textarea 
                           placeholder="Nhập tiêu đề (ví dụ: Câu 1, Bài 1...)" 
                           className="w-full px-4 py-2 bg-zinc-50 rounded-xl outline-none text-sm min-h-[60px]"
@@ -1040,7 +1181,14 @@ export default function Admin({ onBack }: AdminProps) {
                               </button>
                             )}
                             <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-zinc-400 uppercase">Bài tập {i + 1} - Đề bài</label>
+                              <div className="flex items-center justify-between">
+                                <label className="text-[10px] font-bold text-zinc-400 uppercase">Bài tập {i + 1} - Đề bài</label>
+                                <ImageUploader onUpload={(url) => {
+                                  const newItems = [...newPractice.items];
+                                  newItems[i].problem += `\n![image](${url})`;
+                                  setNewPractice({...newPractice, items: newItems});
+                                }} />
+                              </div>
                               <textarea 
                                 placeholder="Nhập đề bài..." 
                                 className="w-full px-4 py-2 bg-white rounded-xl outline-none text-sm min-h-[80px] border border-zinc-200"
@@ -1054,7 +1202,14 @@ export default function Admin({ onBack }: AdminProps) {
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                               <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-zinc-400 uppercase">Gợi ý</label>
+                                <div className="flex items-center justify-between">
+                                  <label className="text-[10px] font-bold text-zinc-400 uppercase">Gợi ý</label>
+                                  <ImageUploader onUpload={(url) => {
+                                    const newItems = [...newPractice.items];
+                                    newItems[i].hint += `\n![image](${url})`;
+                                    setNewPractice({...newPractice, items: newItems});
+                                  }} />
+                                </div>
                                 <input 
                                   type="text" 
                                   placeholder="Gợi ý..." 
@@ -1068,7 +1223,14 @@ export default function Admin({ onBack }: AdminProps) {
                                 />
                               </div>
                               <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-zinc-400 uppercase">Đáp số</label>
+                                <div className="flex items-center justify-between">
+                                  <label className="text-[10px] font-bold text-zinc-400 uppercase">Đáp số</label>
+                                  <ImageUploader onUpload={(url) => {
+                                    const newItems = [...newPractice.items];
+                                    newItems[i].answer += `\n![image](${url})`;
+                                    setNewPractice({...newPractice, items: newItems});
+                                  }} />
+                                </div>
                                 <input 
                                   type="text" 
                                   placeholder="Đáp số..." 
@@ -1114,6 +1276,7 @@ export default function Admin({ onBack }: AdminProps) {
           </div>
         )}
       </main>
+      <FloatingImageTool />
     </div>
   );
 }
