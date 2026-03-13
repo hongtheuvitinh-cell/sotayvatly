@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { CheckCircle2, XCircle, ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
-import { QuizSection, QuizItem } from './types';
+import { QuizSection, QuizItem } from '../types';
 import Markdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import remarkBreaks from 'remark-breaks';
