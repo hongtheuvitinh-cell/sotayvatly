@@ -975,7 +975,241 @@ export default function Admin({ onBack }: AdminProps) {
                     <Dumbbell size={20} className="text-zinc-400" />
                     Bài tập Tự rèn
                   </h3>
-                  {/* ... existing practice code ... */}
+                  <div className="space-y-4">
+                    {(lessonData?.practice || []).map(ex => (
+                      <div key={ex.id} className="bg-white border border-zinc-200 rounded-2xl p-6 space-y-4 relative group">
+                        <div className="absolute top-4 right-4 flex items-center gap-2">
+                          <button 
+                            onClick={() => setEditingContent({
+                              type: 'practice', 
+                              id: ex.id, 
+                              data: { ...ex }
+                            })}
+                            className="text-zinc-400 hover:text-zinc-900"
+                          >
+                            <Edit2 size={18} />
+                          </button>
+                          <button 
+                            onClick={() => deleteContent('practice', ex.id)}
+                            className="text-zinc-400 hover:text-rose-600"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                        
+                        {editingContent?.type === 'practice' && editingContent.id === ex.id ? (
+                          <div className="space-y-4 pt-4">
+                            <input 
+                              type="text"
+                              value={editingContent.data.title}
+                              onChange={(e) => setEditingContent({
+                                ...editingContent,
+                                data: { ...editingContent.data, title: e.target.value }
+                              })}
+                              className="w-full p-3 bg-zinc-50 border border-zinc-200 rounded-xl font-bold"
+                              placeholder="Tiêu đề bài tập..."
+                            />
+                            
+                            <div className="space-y-6">
+                              {(editingContent.data.items || []).map((item: any, idx: number) => (
+                                <div key={idx} className="p-4 bg-zinc-50 rounded-2xl border border-zinc-200 space-y-4 relative">
+                                  <button 
+                                    onClick={() => {
+                                      const newItems = [...editingContent.data.items];
+                                      newItems.splice(idx, 1);
+                                      setEditingContent({
+                                        ...editingContent,
+                                        data: { ...editingContent.data, items: newItems }
+                                      });
+                                    }}
+                                    className="absolute top-2 right-2 text-zinc-400 hover:text-rose-600"
+                                  >
+                                    <X size={16} />
+                                  </button>
+                                  
+                                  <div className="space-y-2">
+                                    <label className="text-xs font-bold text-zinc-400 uppercase">Đề bài {idx + 1}</label>
+                                    <textarea 
+                                      value={item.problem}
+                                      onChange={(e) => {
+                                        const newItems = [...editingContent.data.items];
+                                        newItems[idx] = { ...newItems[idx], problem: e.target.value };
+                                        setEditingContent({ ...editingContent, data: { ...editingContent.data, items: newItems } });
+                                      }}
+                                      className="w-full p-3 bg-white border border-zinc-200 rounded-xl text-sm min-h-[100px]"
+                                      placeholder="Nhập đề bài..."
+                                    />
+                                    <ImageUploader onUpload={(url) => {
+                                      const newItems = [...editingContent.data.items];
+                                      newItems[idx] = { ...newItems[idx], problem: (newItems[idx].problem || '') + `\n\n![image](${url})\n` };
+                                      setEditingContent({ ...editingContent, data: { ...editingContent.data, items: newItems } });
+                                    }} />
+                                  </div>
+                                  
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                      <label className="text-xs font-bold text-zinc-400 uppercase">Gợi ý</label>
+                                      <textarea 
+                                        value={item.hint || ''}
+                                        onChange={(e) => {
+                                          const newItems = [...editingContent.data.items];
+                                          newItems[idx] = { ...newItems[idx], hint: e.target.value };
+                                          setEditingContent({ ...editingContent, data: { ...editingContent.data, items: newItems } });
+                                        }}
+                                        className="w-full p-3 bg-white border border-zinc-200 rounded-xl text-sm min-h-[80px]"
+                                        placeholder="Gợi ý (nếu có)..."
+                                      />
+                                    </div>
+                                    <div className="space-y-2">
+                                      <label className="text-xs font-bold text-zinc-400 uppercase">Đáp số</label>
+                                      <textarea 
+                                        value={item.answer || ''}
+                                        onChange={(e) => {
+                                          const newItems = [...editingContent.data.items];
+                                          newItems[idx] = { ...newItems[idx], answer: e.target.value };
+                                          setEditingContent({ ...editingContent, data: { ...editingContent.data, items: newItems } });
+                                        }}
+                                        className="w-full p-3 bg-white border border-zinc-200 rounded-xl text-sm min-h-[80px]"
+                                        placeholder="Đáp số..."
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                              
+                              <button 
+                                onClick={() => {
+                                  const newItems = [...(editingContent.data.items || []), { problem: '', hint: '', answer: '' }];
+                                  setEditingContent({ ...editingContent, data: { ...editingContent.data, items: newItems } });
+                                }}
+                                className="w-full py-2 border-2 border-dashed border-zinc-200 rounded-xl text-zinc-400 text-xs font-bold hover:border-zinc-400 hover:text-zinc-600 transition-all"
+                              >
+                                + Thêm câu hỏi
+                              </button>
+                            </div>
+
+                            <div className="flex gap-2">
+                              <button 
+                                onClick={() => updateContent('practice', editingContent.id, editingContent.data)}
+                                className="flex-1 py-3 bg-zinc-900 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2"
+                              >
+                                <Check size={18} /> Cập nhật
+                              </button>
+                              <button 
+                                onClick={() => setEditingContent(null)}
+                                className="px-6 py-3 bg-zinc-100 text-zinc-600 rounded-xl font-bold text-sm"
+                              >
+                                Hủy
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="font-bold text-zinc-900">{ex.title}</div>
+                            <div className="text-sm text-zinc-500">{(ex.items || []).length} câu hỏi</div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    {/* Add New Practice */}
+                    <div className="bg-zinc-50 border border-zinc-200 rounded-2xl p-6 space-y-4">
+                      <div className="text-sm font-bold text-zinc-400 uppercase tracking-widest">Thêm bài tập tự rèn mới</div>
+                      <input 
+                        type="text"
+                        value={newPractice.title}
+                        onChange={(e) => setNewPractice({...newPractice, title: e.target.value})}
+                        className="w-full p-3 bg-white border border-zinc-200 rounded-xl font-bold"
+                        placeholder="Tiêu đề bài tập..."
+                      />
+                      
+                      <div className="space-y-4">
+                        {newPractice.items.map((item, idx) => (
+                          <div key={idx} className="p-4 bg-white rounded-2xl border border-zinc-200 space-y-4 relative">
+                            {newPractice.items.length > 1 && (
+                              <button 
+                                onClick={() => {
+                                  const newItems = [...newPractice.items];
+                                  newItems.splice(idx, 1);
+                                  setNewPractice({...newPractice, items: newItems});
+                                }}
+                                className="absolute top-2 right-2 text-zinc-400 hover:text-rose-600"
+                              >
+                                <X size={16} />
+                              </button>
+                            )}
+                            
+                            <div className="space-y-2">
+                              <label className="text-xs font-bold text-zinc-400 uppercase">Đề bài {idx + 1}</label>
+                              <textarea 
+                                value={item.problem}
+                                onChange={(e) => {
+                                  const newItems = [...newPractice.items];
+                                  newItems[idx] = { ...newItems[idx], problem: e.target.value };
+                                  setNewPractice({...newPractice, items: newItems});
+                                }}
+                                className="w-full p-3 bg-zinc-50 border border-zinc-200 rounded-xl text-sm min-h-[100px]"
+                                placeholder="Nhập đề bài..."
+                              />
+                              <ImageUploader onUpload={(url) => {
+                                const newItems = [...newPractice.items];
+                                newItems[idx] = { ...newItems[idx], problem: (newItems[idx].problem || '') + `\n\n![image](${url})\n` };
+                                setNewPractice({...newPractice, items: newItems});
+                              }} />
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <label className="text-xs font-bold text-zinc-400 uppercase">Gợi ý</label>
+                                <textarea 
+                                  value={item.hint}
+                                  onChange={(e) => {
+                                    const newItems = [...newPractice.items];
+                                    newItems[idx] = { ...newItems[idx], hint: e.target.value };
+                                    setNewPractice({...newPractice, items: newItems});
+                                  }}
+                                  className="w-full p-3 bg-zinc-50 border border-zinc-200 rounded-xl text-sm min-h-[80px]"
+                                  placeholder="Gợi ý (nếu có)..."
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-xs font-bold text-zinc-400 uppercase">Đáp số</label>
+                                <textarea 
+                                  value={item.answer}
+                                  onChange={(e) => {
+                                    const newItems = [...newPractice.items];
+                                    newItems[idx] = { ...newItems[idx], answer: e.target.value };
+                                    setNewPractice({...newPractice, items: newItems});
+                                  }}
+                                  className="w-full p-3 bg-zinc-50 border border-zinc-200 rounded-xl text-sm min-h-[80px]"
+                                  placeholder="Đáp số..."
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        
+                        <button 
+                          onClick={() => setNewPractice({...newPractice, items: [...newPractice.items, { problem: '', hint: '', answer: '' }]})}
+                          className="w-full py-2 border-2 border-dashed border-zinc-200 rounded-xl text-zinc-400 text-xs font-bold hover:border-zinc-400 hover:text-zinc-600 transition-all"
+                        >
+                          + Thêm câu hỏi
+                        </button>
+                      </div>
+
+                      <button 
+                        onClick={() => {
+                          if (newPractice.title && newPractice.items[0].problem) {
+                            addContent('practice', newPractice);
+                            setNewPractice({ title: '', items: [{ problem: '', hint: '', answer: '' }] });
+                          }
+                        }}
+                        className="w-full py-3 bg-zinc-900 text-white rounded-xl font-bold text-sm hover:bg-zinc-800 transition-colors"
+                      >
+                        Lưu Bài tập Tự rèn
+                      </button>
+                    </div>
+                  </div>
                 </section>
 
                 {/* 4. Quizzes */}
