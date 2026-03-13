@@ -127,7 +127,7 @@ app.put("/api/lessons/:id", async (req, res) => {
 
 app.post("/api/content/:type", async (req, res) => {
   const { type } = req.params;
-  const table = type === 'formula' ? 'formulas' : type === 'example' ? 'examples' : 'practice_exercises';
+  const table = type === 'formula' ? 'formulas' : type === 'example' ? 'examples' : type === 'quiz' ? 'quizzes' : 'practice_exercises';
   
   const { id: _, created_at: __, ...insertData } = req.body;
   
@@ -146,7 +146,7 @@ app.post("/api/content/:type", async (req, res) => {
 
 app.delete("/api/content/:type/:id", async (req, res) => {
   const { type, id } = req.params;
-  const table = type === 'formula' ? 'formulas' : type === 'example' ? 'examples' : 'practice_exercises';
+  const table = type === 'formula' ? 'formulas' : type === 'example' ? 'examples' : type === 'quiz' ? 'quizzes' : 'practice_exercises';
   const { error } = await supabase.from(table).delete().eq('id', id);
   if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true });
@@ -154,7 +154,7 @@ app.delete("/api/content/:type/:id", async (req, res) => {
 
 app.put("/api/content/:type/:id", async (req, res) => {
   const { type, id } = req.params;
-  const table = type === 'formula' ? 'formulas' : type === 'example' ? 'examples' : 'practice_exercises';
+  const table = type === 'formula' ? 'formulas' : type === 'example' ? 'examples' : type === 'quiz' ? 'quizzes' : 'practice_exercises';
   
   const { id: _, created_at: __, ...updateData } = req.body;
   
@@ -176,10 +176,11 @@ app.get("/api/lessons/:id", async (req, res) => {
 
     if (lessonError) throw lessonError;
 
-    const [formulasRes, examplesRes, practiceRes] = await Promise.all([
+    const [formulasRes, examplesRes, practiceRes, quizzesRes] = await Promise.all([
       supabase.from('formulas').select('*').eq('lesson_id', lessonId),
       supabase.from('examples').select('*').eq('lesson_id', lessonId),
-      supabase.from('practice_exercises').select('*').eq('lesson_id', lessonId)
+      supabase.from('practice_exercises').select('*').eq('lesson_id', lessonId),
+      supabase.from('quizzes').select('*').eq('lesson_id', lessonId).order('sort_order')
     ]);
 
     res.json({
@@ -189,7 +190,8 @@ app.get("/api/lessons/:id", async (req, res) => {
       practice: (practiceRes.data || []).map(p => ({
         ...p,
         items: p.items || [{ problem: p.problem || '', hint: p.hint || '', answer: p.answer || '' }]
-      }))
+      })),
+      quizzes: quizzesRes.data || []
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
