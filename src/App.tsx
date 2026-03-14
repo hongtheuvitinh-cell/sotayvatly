@@ -10,7 +10,9 @@ import {
   Calculator,
   Lightbulb,
   Dumbbell,
-  Settings
+  Settings,
+  Folder,
+  ChevronRight as ChevronRightIcon
 } from 'lucide-react';
 
 import Markdown from 'react-markdown';
@@ -20,6 +22,7 @@ import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { Chapter, FullLesson } from './types';
 import Admin from './Admin';
+import { QuizDisplay } from './components/QuizDisplay';
 
 export default function App() {
   const [chapters, setChapters] = useState<Chapter[]>([]);
@@ -52,13 +55,9 @@ export default function App() {
       .then(data => {
         if (Array.isArray(data)) {
           setChapters(data);
-          if (data.length > 0 && (data[0].lessons || []).length > 0) {
-            setSelectedLessonId(data[0].lessons[0].id);
-            setExpandedChapters(new Set([data[0].id]));
-          } else {
-            setSelectedLessonId(null);
-            setLessonData(null);
-          }
+          // Do not automatically expand or select on load
+          setSelectedLessonId(null);
+          setLessonData(null);
         } else {
           console.error("Data is not an array:", data);
           setChapters([]);
@@ -158,75 +157,49 @@ export default function App() {
           width: isSidebarOpen ? '320px' : '0px',
           x: isSidebarOpen ? 0 : -320
         }}
-        className="fixed lg:relative z-40 h-full bg-white border-r border-zinc-200 flex flex-col shadow-xl lg:shadow-none"
+        className="fixed lg:relative z-40 h-full bg-white border-r border-zinc-100 flex flex-col shadow-xl lg:shadow-none"
       >
-        <div className="p-4 border-b border-zinc-100 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-zinc-900 rounded-lg flex items-center justify-center shrink-0">
-                <GraduationCap className="text-white" size={20} />
-              </div>
-              <h1 className="font-bold text-sm tracking-tight">Sổ tay Công thức</h1>
-            </div>
+        <div className="p-6 space-y-6">
+          <div className="flex items-center justify-between lg:hidden">
+            <h1 className="font-bold text-sm tracking-tight">Menu</h1>
             <button 
               onClick={() => setIsSidebarOpen(false)}
-              className="p-2 hover:bg-zinc-100 rounded-lg lg:hidden"
+              className="p-2 hover:bg-zinc-100 rounded-lg"
             >
               <X size={20} />
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div className="relative">
-              <select 
-                value={selectedSubject}
-                onChange={(e) => setSelectedSubject(e.target.value)}
-                className="w-full appearance-none bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-1.5 text-[11px] font-bold text-zinc-600 outline-none focus:ring-2 focus:ring-zinc-900 transition-all cursor-pointer"
-              >
-                {subjects.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-              <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
-            </div>
-            <div className="relative">
-              <select 
-                value={selectedGrade}
-                onChange={(e) => setSelectedGrade(e.target.value)}
-                className="w-full appearance-none bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-1.5 text-[11px] font-bold text-zinc-600 outline-none focus:ring-2 focus:ring-zinc-900 transition-all cursor-pointer"
-              >
-                {grades.map(g => <option key={g} value={g}>{g}</option>)}
-              </select>
-              <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
-            </div>
-          </div>
-        </div>
-
-        <div className="p-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
             <input
               type="text"
-              placeholder="Tìm kiếm bài học..."
+              placeholder="Tìm kiếm..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-zinc-100 border-transparent focus:bg-white focus:ring-2 focus:ring-zinc-900 rounded-xl transition-all outline-none text-sm"
+              className="w-full pl-11 pr-4 py-3 bg-white border border-zinc-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 rounded-full transition-all outline-none text-sm shadow-sm"
             />
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto p-4 space-y-2">
+        <nav className="flex-1 overflow-y-auto px-4 pb-4 space-y-1">
           {filteredChapters.map((chapter) => (
             <div key={chapter.id} className="space-y-1">
               <button
                 onClick={() => toggleChapter(chapter.id)}
-                className="w-full flex items-center justify-between p-2 hover:bg-zinc-50 rounded-lg group transition-colors"
+                className="w-full flex items-center gap-3 p-2 hover:bg-zinc-50 rounded-lg group transition-colors"
               >
-                <span className="text-sm font-semibold text-zinc-600 group-hover:text-zinc-900 text-left">
+                <ChevronRightIcon 
+                  size={16} 
+                  className={`text-zinc-400 transition-transform duration-200 ${expandedChapters.has(chapter.id) ? 'rotate-90' : ''}`} 
+                />
+                <Folder 
+                  size={20} 
+                  className={`text-amber-500 fill-amber-500/10 transition-colors`} 
+                />
+                <span className="text-[13px] font-bold text-zinc-700 group-hover:text-zinc-900 text-left uppercase tracking-tight truncate">
                   {chapter.title}
                 </span>
-                <ChevronDown 
-                  size={16} 
-                  className={`text-zinc-400 transition-transform ${expandedChapters.has(chapter.id) ? 'rotate-180' : ''}`} 
-                />
               </button>
               
               <AnimatePresence initial={false}>
@@ -235,16 +208,16 @@ export default function App() {
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden space-y-1 ml-2 border-l border-zinc-100 pl-2"
+                    className="overflow-hidden space-y-1 ml-9 border-l border-zinc-100 pl-4"
                   >
                     {(chapter.lessons || []).map((lesson) => (
                       <button
                         key={lesson.id}
                         onClick={() => setSelectedLessonId(lesson.id)}
-                        className={`w-full text-left p-2 rounded-lg text-sm transition-all ${
+                        className={`w-full text-left py-2 px-3 rounded-lg text-[13px] font-medium transition-all ${
                           selectedLessonId === lesson.id
-                            ? 'bg-zinc-900 text-white shadow-md'
-                            : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900'
+                            ? 'bg-blue-50 text-blue-700 border-l-2 border-blue-600 rounded-l-none'
+                            : 'text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900'
                         }`}
                       >
                         {lesson.title}
@@ -259,9 +232,31 @@ export default function App() {
 
         {/* Admin Link */}
         <div className="p-4 border-t border-zinc-100">
+          <div className="grid grid-cols-2 gap-2 mb-4">
+            <div className="relative">
+              <select 
+                value={selectedSubject}
+                onChange={(e) => setSelectedSubject(e.target.value)}
+                className="w-full appearance-none bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-1.5 text-[10px] font-bold text-zinc-600 outline-none focus:ring-2 focus:ring-zinc-900 transition-all cursor-pointer"
+              >
+                {subjects.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+            </div>
+            <div className="relative">
+              <select 
+                value={selectedGrade}
+                onChange={(e) => setSelectedGrade(e.target.value)}
+                className="w-full appearance-none bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-1.5 text-[10px] font-bold text-zinc-600 outline-none focus:ring-2 focus:ring-zinc-900 transition-all cursor-pointer"
+              >
+                {grades.map(g => <option key={g} value={g}>{g}</option>)}
+              </select>
+              <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+            </div>
+          </div>
           <button 
             onClick={() => setIsAdmin(true)}
-            className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold text-zinc-400 hover:text-zinc-900 transition-colors"
+            className="w-full flex items-center justify-center gap-2 py-2 text-[10px] font-bold text-zinc-400 hover:text-zinc-900 transition-colors"
           >
             <Settings size={14} />
             QUẢN TRỊ VIÊN
@@ -379,7 +374,7 @@ export default function App() {
               )}
 
               {/* 3. Bài tập tự rèn Section */}
-              {lessonData.practice && (
+              {lessonData.practice && lessonData.practice.length > 0 && (
                 <section className="space-y-6">
                   <div className="flex items-center gap-2 text-zinc-900">
                     <Dumbbell size={24} />
@@ -485,6 +480,21 @@ export default function App() {
                           )}
                         </div>
                       </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* 4. Bài tập trắc nghiệm Section */}
+              {lessonData.quizzes && lessonData.quizzes.length > 0 && (
+                <section className="space-y-6">
+                  <div className="flex items-center gap-2 text-zinc-900">
+                    <GraduationCap size={24} />
+                    <h3 className="text-xl font-bold">4. Bài tập trắc nghiệm</h3>
+                  </div>
+                  <div className="grid gap-6">
+                    {lessonData.quizzes.map((quiz) => (
+                      <QuizDisplay key={quiz.id} quiz={quiz} />
                     ))}
                   </div>
                 </section>
