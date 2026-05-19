@@ -15,17 +15,16 @@ import {
   ChevronRight as ChevronRightIcon
 } from 'lucide-react';
 
-import Markdown from 'react-markdown';
-import remarkMath from 'remark-math';
-import remarkBreaks from 'remark-breaks';
-import rehypeKatex from 'rehype-katex';
-import rehypeRaw from 'rehype-raw';
-import 'katex/dist/katex.min.css';
+import Markdown from "react-markdown";
+import remarkMath from "remark-math";
+import remarkBreaks from "remark-breaks";
+import rehypeKatex from "rehype-katex";
+import rehypeRaw from "rehype-raw";
 import { Chapter, FullLesson } from './types';
 import Admin from './Admin';
 import { QuizDisplay } from './components/QuizDisplay';
 
-import remarkGfm from 'remark-gfm';
+import remarkGfm from "remark-gfm";
 
 const preprocessMarkdown = (content: string) => {
   if (!content) return '';

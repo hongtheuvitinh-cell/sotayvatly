@@ -28,7 +28,6 @@ import remarkMath from "remark-math";
 import remarkBreaks from "remark-breaks";
 import rehypeKatex from "rehype-katex";
 import rehypeRaw from "rehype-raw";
-import "katex/dist/katex.min.css";
 
 interface AdminProps {
   onBack: () => void;
@@ -40,7 +39,6 @@ import {
   preprocessMarkdown,
 } from "./components/MarkdownEditor";
 import { FloatingImageTool } from "./components/FloatingImageTool";
-
 import { FormulasSection } from "./components/admin/FormulasSection";
 import { ExamplesSection } from "./components/admin/ExamplesSection";
 import { ExercisesSection } from "./components/admin/ExercisesSection";
@@ -953,7 +951,6 @@ export default function Admin({ onBack }: AdminProps) {
           </div>
         )}
       </main>
-      �
       <FloatingImageTool />
     </div>
   );
