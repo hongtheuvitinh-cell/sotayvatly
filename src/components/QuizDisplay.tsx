@@ -5,7 +5,17 @@ import Markdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import remarkBreaks from 'remark-breaks';
 import rehypeKatex from 'rehype-katex';
+import rehypeRaw from 'rehype-raw';
 import 'katex/dist/katex.min.css';
+
+import remarkGfm from 'remark-gfm';
+
+const preprocessMarkdown = (content: string) => {
+  if (!content) return '';
+  return content
+    .replace(/(<(div|p|center|header|section|footer)[^>]*>)/gi, '$1\n\n')
+    .replace(/(<\/(div|p|center|header|section|footer)>)/gi, '\n\n$1');
+};
 
 interface QuizDisplayProps {
   quiz: QuizSection;
@@ -51,10 +61,10 @@ export function QuizDisplay({ quiz }: QuizDisplayProps) {
                 </span>
                 <div className="text-lg text-slate-800 pt-0.5 prose prose-slate max-w-none">
                   <Markdown 
-                    remarkPlugins={[remarkMath, remarkBreaks]} 
-                    rehypePlugins={[rehypeKatex]}
+                    remarkPlugins={[remarkMath, remarkBreaks, remarkGfm]} 
+                    rehypePlugins={[rehypeKatex, rehypeRaw]}
                   >
-                    {item.question}
+                    {preprocessMarkdown(item.question)}
                   </Markdown>
                 </div>
               </div>
@@ -98,10 +108,10 @@ export function QuizDisplay({ quiz }: QuizDisplayProps) {
                       </span>
                       <div className={`flex-1 prose prose-sm max-w-none ${textColor}`}>
                         <Markdown 
-                          remarkPlugins={[remarkMath, remarkBreaks]} 
-                          rehypePlugins={[rehypeKatex]}
+                          remarkPlugins={[remarkMath, remarkBreaks, remarkGfm]} 
+                          rehypePlugins={[rehypeKatex, rehypeRaw]}
                         >
-                          {option.content}
+                          {preprocessMarkdown(option.content)}
                         </Markdown>
                       </div>
                       {icon}
@@ -124,10 +134,10 @@ export function QuizDisplay({ quiz }: QuizDisplayProps) {
                   {showExplanations[qIdx] && (
                     <div className="mt-3 p-4 bg-indigo-50/50 rounded-xl border border-indigo-100 prose prose-indigo max-w-none animate-in fade-in slide-in-from-top-2 duration-300">
                       <Markdown 
-                        remarkPlugins={[remarkMath, remarkBreaks]} 
-                        rehypePlugins={[rehypeKatex]}
+                        remarkPlugins={[remarkMath, remarkBreaks, remarkGfm]} 
+                        rehypePlugins={[rehypeKatex, rehypeRaw]}
                       >
-                        {item.explanation}
+                        {preprocessMarkdown(item.explanation)}
                       </Markdown>
                     </div>
                   )}
@@ -140,3 +150,4 @@ export function QuizDisplay({ quiz }: QuizDisplayProps) {
     </div>
   );
 }
+
