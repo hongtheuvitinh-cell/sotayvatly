@@ -13,3 +13,55 @@ body {
 .katex-mathml {
   display: none;
 }
+
+.markdown-body {
+  line-height: 1.6;
+}
+
+/* Căn lề cho hình ảnh và các khối trong Markdown */
+.markdown-body img {
+  max-width: 100%;
+  height: auto;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* Xử lý căn lề thông qua thuộc tính style inline */
+.markdown-body [style*="text-align: center"],
+.markdown-body [style*="text-align:center"] {
+  text-align: center !important;
+  display: block;
+  width: 100%;
+}
+
+.markdown-body [style*="text-align: center"] img {
+  display: block;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.markdown-body [style*="text-align: right"],
+.markdown-body [style*="text-align:right"] {
+  text-align: right !important;
+  display: block;
+  width: 100%;
+}
+
+.markdown-body [style*="text-align: left"],
+.markdown-body [style*="text-align:left"] {
+  text-align: left !important;
+  display: block;
+  width: 100%;
+}
+
+/* Đảm bảo in đậm luôn hoạt động kể cả khi lồng trong HTML */
+.markdown-body strong, 
+.markdown-body b {
+  font-weight: 800 !important;
+  color: inherit;
+}
+
+/* Fix markdown literal issues */
+.markdown-body p {
+  margin-bottom: 1em;
+}
