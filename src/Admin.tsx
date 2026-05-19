@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
-import { 
-  Plus, 
-  Trash2, 
-  ChevronRight, 
-  Save, 
+import { useState, useEffect, useRef } from "react";
+import {
+  Plus,
+  Trash2,
+  ChevronRight,
+  Save,
   ArrowLeft,
   LayoutGrid,
   FileText,
@@ -14,182 +14,114 @@ import {
   Check,
   X,
   Image as ImageIcon,
-  ListChecks
-} from 'lucide-react';
-import { Chapter, FullLesson } from './types';
+  ListChecks,
+  Sigma,
+  Eye,
+  Code,
+  ArrowUp,
+  ArrowDown,
+} from "lucide-react";
+import { Chapter, FullLesson } from "./types";
 
-import Markdown from 'react-markdown';
-import remarkMath from 'remark-math';
-import remarkBreaks from 'remark-breaks';
-import rehypeKatex from 'rehype-katex';
-import 'katex/dist/katex.min.css';
+import Markdown from "react-markdown";
+import remarkMath from "remark-math";
+import remarkBreaks from "remark-breaks";
+import rehypeKatex from "rehype-katex";
+import rehypeRaw from "rehype-raw";
+import "katex/dist/katex.min.css";
 
 interface AdminProps {
   onBack: () => void;
 }
 
-function ImageUploader({ onUpload, className = "" }: { onUpload: (url: string) => void, className?: string }) {
-  const [isUploading, setIsUploading] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-  
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
-    setIsUploading(true);
-    const formData = new FormData();
-    formData.append('image', file);
-    
-    try {
-      const res = await fetch('/api/upload-image', {
-        method: 'POST',
-        body: formData
-      });
-      
-      if (res.ok) {
-        const { url } = await res.json();
-        onUpload(url);
-      } else {
-        alert("Upload ảnh thất bại!");
-      }
-    } catch (error) {
-      alert("Lỗi kết nối server!");
-    } finally {
-      setIsUploading(false);
-    }
-  };
-  
-  return (
-    <div className={className}>
-      <input type="file" ref={inputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
-      <button 
-        type="button"
-        disabled={isUploading}
-        onClick={() => inputRef.current?.click()}
-        className="text-[10px] font-bold text-zinc-400 hover:text-zinc-900 flex items-center gap-1 uppercase tracking-wider"
-      >
-        {isUploading ? (
-          <div className="w-3 h-3 border border-zinc-300 border-t-zinc-900 rounded-full animate-spin" />
-        ) : (
-          <ImageIcon size={12} />
-        )}
-        {isUploading ? "Đang tải..." : "Chèn ảnh"}
-      </button>
-    </div>
-  );
-}
+import remarkGfm from "remark-gfm";
+import {
+  MarkdownEditor,
+  preprocessMarkdown,
+} from "./components/MarkdownEditor";
+import { FloatingImageTool } from "./components/FloatingImageTool";
 
-function FloatingImageTool() {
-  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsUploading(true);
-    const formData = new FormData();
-    formData.append('image', file);
-    try {
-      const res = await fetch('/api/upload-image', { method: 'POST', body: formData });
-      if (res.ok) {
-        const { url } = await res.json();
-        setUploadedUrl(url);
-      }
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const copyToClipboard = () => {
-    if (uploadedUrl) {
-      navigator.clipboard.writeText(`![image](${uploadedUrl})`);
-      alert("Đã copy mã hình ảnh! Bạn có thể dán vào bài viết.");
-    }
-  };
-
-  return (
-    <div className="fixed bottom-8 right-8 z-50 flex flex-col items-end gap-3">
-      {uploadedUrl && (
-        <div className="bg-white p-3 rounded-2xl shadow-2xl border border-zinc-200 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-4">
-          <img src={uploadedUrl} className="w-12 h-12 object-cover rounded-lg border border-zinc-100" />
-          <div className="flex flex-col gap-1">
-            <p className="text-[10px] font-bold text-zinc-400 uppercase">Ảnh đã tải lên</p>
-            <button 
-              onClick={copyToClipboard}
-              className="px-3 py-1.5 bg-zinc-900 text-white text-xs font-bold rounded-lg hover:bg-zinc-800 transition-colors flex items-center gap-2"
-            >
-              Copy mã ảnh
-            </button>
-          </div>
-          <button onClick={() => setUploadedUrl(null)} className="p-1 text-zinc-400 hover:text-zinc-900">
-            <X size={18} />
-          </button>
-        </div>
-      )}
-      <input type="file" ref={inputRef} onChange={handleUpload} className="hidden" accept="image/*" />
-      <button 
-        onClick={() => inputRef.current?.click()}
-        disabled={isUploading}
-        className="w-14 h-14 bg-zinc-900 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-all active:scale-95 group relative"
-        title="Upload ảnh nhanh"
-      >
-        {isUploading ? (
-          <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-        ) : (
-          <ImageIcon size={28} />
-        )}
-        {!isUploading && (
-          <div className="absolute right-full mr-3 px-3 py-1.5 bg-zinc-900 text-white text-[10px] font-bold rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none uppercase tracking-widest">
-            Upload ảnh nhanh
-          </div>
-        )}
-      </button>
-    </div>
-  );
-}
+import { FormulasSection } from "./components/admin/FormulasSection";
+import { ExamplesSection } from "./components/admin/ExamplesSection";
+import { ExercisesSection } from "./components/admin/ExercisesSection";
+import { QuizzesSection } from "./components/admin/QuizzesSection";
+import { LessonHeader } from "./components/admin/LessonHeader";
 
 export default function Admin({ onBack }: AdminProps) {
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [selectedLessonId, setSelectedLessonId] = useState<number | null>(null);
   const [lessonData, setLessonData] = useState<FullLesson | null>(null);
-  const [activeTab, setActiveTab] = useState<'chapters' | 'content'>('chapters');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [password, setPassword] = useState('');
+  const [activeTab, setActiveTab] = useState<"chapters" | "content">(
+    "chapters",
+  );
+  const [lessonTab, setLessonTab] = useState<
+    "formulas" | "examples" | "exercises" | "quizzes"
+  >("formulas");
+  const [exampleSubTab, setExampleSubTab] = useState<"methods" | "items">(
+    "methods",
+  );
+  const [selectedExampleId, setSelectedExampleId] = useState<number | null>(
+    null,
+  );
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [password, setPassword] = useState("");
 
   // Form states
-  const [newChapterTitle, setNewChapterTitle] = useState('');
-  const [newChapterSubject, setNewChapterSubject] = useState('Toán học');
-  const [newChapterGrade, setNewChapterGrade] = useState('Lớp 12');
-  const [isDeleting, setIsDeleting] = useState<{type: string, id: number} | null>(null);
-  const [editingTitle, setEditingTitle] = useState<{type: 'chapter' | 'lesson', id: number, title: string} | null>(null);
-  const [editingContent, setEditingContent] = useState<{type: string, id: number, data: any} | null>(null);
+  const [newChapterTitle, setNewChapterTitle] = useState("");
+  const [newChapterSubject, setNewChapterSubject] = useState("Toán học");
+  const [newChapterGrade, setNewChapterGrade] = useState("Lớp 12");
+  const [filterSubject, setFilterSubject] = useState("Toán học");
+  const [filterGrade, setFilterGrade] = useState("Lớp 12");
+  const [isDeleting, setIsDeleting] = useState<{
+    type: string;
+    id: number;
+  } | null>(null);
+  const [editingTitle, setEditingTitle] = useState<{
+    type: "chapter" | "lesson";
+    id: number;
+    title: string;
+  } | null>(null);
+  const [editingContent, setEditingContent] = useState<{
+    type: string;
+    id: number;
+    data: any;
+  } | null>(null);
   const [newExample, setNewExample] = useState({
-    title: '',
-    items: [{ problem: '', solution: '' }]
+    name: "",
+    title: "",
+    items: [{ problem: "", solution: "" }],
   });
   const [newPractice, setNewPractice] = useState({
-    title: '',
-    items: [{ problem: '', hint: '', answer: '' }]
+    title: "",
+    items: [{ problem: "", hint: "", answer: "" }],
   });
   const [newQuiz, setNewQuiz] = useState({
-    title: '',
-    items: [{ 
-      question: '', 
-      options: [
-        { label: 'A', content: '' },
-        { label: 'B', content: '' },
-        { label: 'C', content: '' },
-        { label: 'D', content: '' }
-      ], 
-      correct_answer: 'A', 
-      explanation: '' 
-    }]
+    title: "",
+    items: [
+      {
+        question: "",
+        options: [
+          { label: "A", content: "" },
+          { label: "B", content: "" },
+          { label: "C", content: "" },
+          { label: "D", content: "" },
+        ],
+        correct_answer: "A",
+        explanation: "",
+      },
+    ],
   });
+  const [newFormula, setNewFormula] = useState("");
 
   useEffect(() => {
     fetchChapters();
-  }, []);
+  }, [filterSubject, filterGrade]);
+
+  useEffect(() => {
+    // Sync new chapter defaults with filters
+    setNewChapterSubject(filterSubject);
+    setNewChapterGrade(filterGrade);
+  }, [filterSubject, filterGrade]);
 
   useEffect(() => {
     if (selectedLessonId) {
@@ -199,7 +131,11 @@ export default function Admin({ onBack }: AdminProps) {
 
   const fetchChapters = async () => {
     try {
-      const res = await fetch('/api/chapters');
+      const url = new URL("/api/chapters", window.location.origin);
+      if (filterSubject) url.searchParams.append("subject", filterSubject);
+      if (filterGrade) url.searchParams.append("grade", filterGrade);
+
+      const res = await fetch(url.toString());
       const data = await res.json();
       if (Array.isArray(data)) {
         setChapters(data);
@@ -229,31 +165,31 @@ export default function Admin({ onBack }: AdminProps) {
 
   const addChapter = async () => {
     if (!newChapterTitle.trim()) return;
-    await fetch('/api/chapters', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        title: newChapterTitle.trim(), 
+    await fetch("/api/chapters", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: newChapterTitle.trim(),
         subject: newChapterSubject,
         grade: newChapterGrade,
-        sort_order: chapters.length + 1 
-      })
+        sort_order: chapters.length + 1,
+      }),
     });
-    setNewChapterTitle('');
+    setNewChapterTitle("");
     fetchChapters();
   };
 
   const deleteChapter = async (id: number) => {
-    await fetch(`/api/chapters/${id}`, { method: 'DELETE' });
+    await fetch(`/api/chapters/${id}`, { method: "DELETE" });
     setIsDeleting(null);
     fetchChapters();
   };
 
   const updateChapter = async (id: number, title: string) => {
     await fetch(`/api/chapters/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title })
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title }),
     });
     setEditingTitle(null);
     fetchChapters();
@@ -261,21 +197,23 @@ export default function Admin({ onBack }: AdminProps) {
 
   const addLesson = async (chapterId: number, title: string) => {
     if (!title.trim()) return;
-    await fetch('/api/lessons', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        chapter_id: chapterId, 
-        title: title.trim(), 
-        description: '',
-        sort_order: 1 
-      })
+    const chapter = chapters.find((c) => c.id === chapterId);
+    const order = chapter ? chapter.lessons.length + 1 : 1;
+    await fetch("/api/lessons", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chapter_id: chapterId,
+        title: title.trim(),
+        description: "",
+        sort_order: order,
+      }),
     });
     fetchChapters();
   };
 
   const deleteLesson = async (id: number) => {
-    await fetch(`/api/lessons/${id}`, { method: 'DELETE' });
+    await fetch(`/api/lessons/${id}`, { method: "DELETE" });
     setIsDeleting(null);
     fetchChapters();
     if (selectedLessonId === id) {
@@ -286,9 +224,9 @@ export default function Admin({ onBack }: AdminProps) {
 
   const updateLesson = async (id: number, title: string) => {
     await fetch(`/api/lessons/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title })
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title }),
     });
     setEditingTitle(null);
     fetchChapters();
@@ -297,24 +235,98 @@ export default function Admin({ onBack }: AdminProps) {
     }
   };
 
-  const addContent = async (type: 'formula' | 'example' | 'practice' | 'quiz', payload: any) => {
+  const moveChapter = async (chapterId: number, direction: "up" | "down") => {
+    const currentIndex = chapters.findIndex((c) => c.id === chapterId);
+    if (currentIndex === -1) return;
+
+    const targetIndex =
+      direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= chapters.length) return;
+
+    const currentChapter = chapters[currentIndex];
+    const targetChapter = chapters[targetIndex];
+
+    const currentOrder = currentChapter.sort_order || currentIndex + 1;
+    const targetOrder = targetChapter.sort_order || targetIndex + 1;
+
+    await Promise.all([
+      fetch(`/api/chapters/${currentChapter.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sort_order: targetOrder }),
+      }),
+      fetch(`/api/chapters/${targetChapter.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sort_order: currentOrder }),
+      }),
+    ]);
+
+    fetchChapters();
+  };
+
+  const moveLesson = async (
+    chapterId: number,
+    lessonId: number,
+    direction: "up" | "down",
+  ) => {
+    const chapter = chapters.find((c) => c.id === chapterId);
+    if (!chapter) return;
+
+    const currentIndex = chapter.lessons.findIndex((l) => l.id === lessonId);
+    if (currentIndex === -1) return;
+
+    const targetIndex =
+      direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= chapter.lessons.length) return;
+
+    const currentLesson = chapter.lessons[currentIndex];
+    const targetLesson = chapter.lessons[targetIndex];
+
+    const currentOrder = currentLesson.sort_order || currentIndex + 1;
+    const targetOrder = targetLesson.sort_order || targetIndex + 1;
+
+    await Promise.all([
+      fetch(`/api/lessons/${currentLesson.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sort_order: targetOrder }),
+      }),
+      fetch(`/api/lessons/${targetLesson.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sort_order: currentOrder }),
+      }),
+    ]);
+
+    fetchChapters();
+  };
+
+  const addContent = async (
+    type: "formula" | "example" | "practice" | "quiz",
+    payload: any,
+  ) => {
     // Cấu trúc dữ liệu gửi lên server
     let body = { ...payload, lesson_id: selectedLessonId };
-    
+
     // Nếu là bài tập tự rèn, đảm bảo có trường 'items'
-    if (type === 'practice') {
+    if (type === "practice") {
       // Lọc bỏ các bài tập trống (không có problem)
       if (body.items && Array.isArray(body.items)) {
-        body.items = body.items.filter((item: any) => item.problem && item.problem.trim() !== '');
+        body.items = body.items.filter(
+          (item: any) => item.problem && item.problem.trim() !== "",
+        );
       }
-      
+
       // Đảm bảo payload có 'items', nếu không thì tạo từ các trường cũ
       if (!body.items || body.items.length === 0) {
-        body.items = [{ 
-          problem: body.problem || '', 
-          hint: body.hint || '', 
-          answer: body.answer || '' 
-        }];
+        body.items = [
+          {
+            problem: body.problem || "",
+            hint: body.hint || "",
+            answer: body.answer || "",
+          },
+        ];
       }
       // Loại bỏ các trường cũ không cần thiết để tránh xung đột
       delete body.problem;
@@ -322,31 +334,43 @@ export default function Admin({ onBack }: AdminProps) {
       delete body.answer;
     }
 
-    if (type === 'quiz') {
+    if (type === "quiz") {
       if (body.items && Array.isArray(body.items)) {
-        body.items = body.items.filter((item: any) => item.question && item.question.trim() !== '');
+        body.items = body.items.filter(
+          (item: any) => item.question && item.question.trim() !== "",
+        );
       }
     }
-    
+
     const res = await fetch(`/api/content/${type}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
     });
-    if (selectedLessonId) fetchLessonDetails(selectedLessonId);
+
+    if (res.ok) {
+      if (selectedLessonId) fetchLessonDetails(selectedLessonId);
+      alert("Thêm thành công!");
+    } else {
+      const errData = await res.json();
+      alert("Lỗi khi thêm: " + (errData.error || "Không xác định"));
+    }
   };
 
-  const deleteContent = async (type: 'formula' | 'example' | 'practice' | 'quiz', id: number) => {
-    await fetch(`/api/content/${type}/${id}`, { method: 'DELETE' });
+  const deleteContent = async (
+    type: "formula" | "example" | "practice" | "quiz",
+    id: number,
+  ) => {
+    await fetch(`/api/content/${type}/${id}`, { method: "DELETE" });
     if (selectedLessonId) fetchLessonDetails(selectedLessonId);
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetch('/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password })
+    const res = await fetch("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
     });
     if (res.ok) setIsAuthenticated(true);
     else alert("Sai mật khẩu!");
@@ -355,7 +379,10 @@ export default function Admin({ onBack }: AdminProps) {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-zinc-50">
-        <form onSubmit={handleLogin} className="bg-white p-8 rounded-xl shadow-sm border border-zinc-200">
+        <form
+          onSubmit={handleLogin}
+          className="bg-white p-8 rounded-xl shadow-sm border border-zinc-200"
+        >
           <h2 className="text-lg font-bold mb-4">Nhập mật khẩu quản trị</h2>
           <input
             type="password"
@@ -364,7 +391,10 @@ export default function Admin({ onBack }: AdminProps) {
             className="w-full p-2 border border-zinc-300 rounded-lg mb-4"
             placeholder="Mật khẩu"
           />
-          <button type="submit" className="w-full bg-zinc-900 text-white py-2 rounded-lg font-medium">
+          <button
+            type="submit"
+            className="w-full bg-zinc-900 text-white py-2 rounded-lg font-medium"
+          >
             Đăng nhập
           </button>
         </form>
@@ -372,36 +402,51 @@ export default function Admin({ onBack }: AdminProps) {
     );
   }
 
-  const updateContent = async (type: 'formula' | 'example' | 'practice' | 'quiz', id: number, payload: any) => {
+  const updateContent = async (
+    type: "formula" | "example" | "practice" | "quiz",
+    id: number,
+    payload: any,
+  ) => {
     // Cấu trúc dữ liệu gửi lên server
     let body = { ...payload };
-    
+
     // Nếu là bài tập tự rèn, đảm bảo có trường 'items' chuẩn
-    if (type === 'practice') {
+    if (type === "practice") {
       // Lọc bỏ các bài tập trống (không có problem)
       if (body.items && Array.isArray(body.items)) {
-        body.items = body.items.filter((item: any) => item.problem && item.problem.trim() !== '');
+        body.items = body.items.filter(
+          (item: any) => item.problem && item.problem.trim() !== "",
+        );
       }
-      
+
       // Loại bỏ các trường cũ không cần thiết để tránh xung đột
       delete body.problem;
       delete body.hint;
       delete body.answer;
     }
 
-    if (type === 'quiz') {
+    if (type === "quiz") {
       if (body.items && Array.isArray(body.items)) {
-        body.items = body.items.filter((item: any) => item.question && item.question.trim() !== '');
+        body.items = body.items.filter(
+          (item: any) => item.question && item.question.trim() !== "",
+        );
       }
     }
 
     const res = await fetch(`/api/content/${type}/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
     });
-    setEditingContent(null);
-    if (selectedLessonId) fetchLessonDetails(selectedLessonId);
+
+    if (res.ok) {
+      setEditingContent(null);
+      if (selectedLessonId) fetchLessonDetails(selectedLessonId);
+      alert("Cập nhật thành công!");
+    } else {
+      const errData = await res.json();
+      alert("Lỗi khi cập nhật: " + (errData.error || "Không xác định"));
+    }
   };
 
   return (
@@ -409,103 +454,228 @@ export default function Admin({ onBack }: AdminProps) {
       {/* Header */}
       <header className="bg-white border-b border-zinc-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-4">
-          <button onClick={onBack} className="p-2 hover:bg-zinc-100 rounded-lg transition-colors">
+          <button
+            onClick={onBack}
+            className="p-2 hover:bg-zinc-100 rounded-lg transition-colors"
+          >
             <ArrowLeft size={20} />
           </button>
           <h1 className="text-xl font-bold">Quản trị nội dung</h1>
         </div>
         <div className="flex bg-zinc-100 p-1 rounded-xl">
-          <button 
-            onClick={() => setActiveTab('chapters')}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${activeTab === 'chapters' ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-500 hover:text-zinc-700'}`}
+          <button
+            onClick={() => setActiveTab("chapters")}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${activeTab === "chapters" ? "bg-white shadow-sm text-zinc-900" : "text-zinc-500 hover:text-zinc-700"}`}
           >
             Cấu trúc
           </button>
-          <button 
-            onClick={() => setActiveTab('content')}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${activeTab === 'content' ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-500 hover:text-zinc-700'}`}
+          <button
+            onClick={() => setActiveTab("content")}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${activeTab === "content" ? "bg-white shadow-sm text-zinc-900" : "text-zinc-500 hover:text-zinc-700"}`}
           >
             Nội dung chi tiết
           </button>
         </div>
       </header>
-
-      <main className="flex-1 p-6 max-w-6xl mx-auto w-full">
-        {activeTab === 'chapters' ? (
+      <main className="flex-1 p-6 w-full mx-0">
+        {activeTab === "chapters" ? (
           <div className="grid lg:grid-cols-2 gap-8">
             {/* Chapters Management */}
             <section className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-bold flex items-center gap-2">
-                  <LayoutGrid size={20} className="text-zinc-400" />
-                  Danh sách Chương
+              <div className="bg-white border border-zinc-200 rounded-3xl p-6 space-y-6 shadow-sm">
+                <h2 className="text-sm font-black flex items-center gap-2 uppercase tracking-tighter text-zinc-400">
+                  <LayoutGrid size={16} />
+                  Bộ lọc & Quản lý chương
                 </h2>
-              </div>
-              
-              <div className="bg-white border border-zinc-200 rounded-2xl p-4 space-y-4 shadow-sm">
-                <div className="space-y-2">
-                  <input 
-                    type="text" 
-                    placeholder="Tên chương mới..." 
-                    value={newChapterTitle}
-                    onChange={(e) => setNewChapterTitle(e.target.value)}
-                    className="w-full px-4 py-2 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 focus:ring-zinc-900 text-sm"
-                  />
-                  <div className="flex gap-2">
-                    <select 
-                      value={newChapterSubject}
-                      onChange={(e) => setNewChapterSubject(e.target.value)}
-                      className="flex-1 px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-xs outline-none"
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase ml-1">
+                      Môn học
+                    </label>
+                    <select
+                      value={filterSubject}
+                      onChange={(e) => setFilterSubject(e.target.value)}
+                      className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-zinc-900 transition-all appearance-none"
                     >
-                      {['Toán học', 'Vật lý', 'Hóa học', 'Sinh học', 'Tiếng Anh'].map(s => <option key={s} value={s}>{s}</option>)}
+                      {[
+                        "Toán học",
+                        "Vật lý",
+                        "Hóa học",
+                        "Sinh học",
+                        "Tiếng Anh",
+                      ].map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
                     </select>
-                    <select 
-                      value={newChapterGrade}
-                      onChange={(e) => setNewChapterGrade(e.target.value)}
-                      className="flex-1 px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-xs outline-none"
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase ml-1">
+                      Khối lớp
+                    </label>
+                    <select
+                      value={filterGrade}
+                      onChange={(e) => setFilterGrade(e.target.value)}
+                      className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-zinc-900 transition-all appearance-none"
                     >
-                      {['Lớp 10', 'Lớp 11', 'Lớp 12'].map(g => <option key={g} value={g}>{g}</option>)}
+                      {["Lớp 10", "Lớp 11", "Lớp 12"].map((g) => (
+                        <option key={g} value={g}>
+                          {g}
+                        </option>
+                      ))}
                     </select>
-                    <button onClick={addChapter} className="px-4 py-2 bg-zinc-900 text-white rounded-xl hover:bg-zinc-800 transition-colors flex items-center gap-2 text-sm font-bold">
-                      <Plus size={18} /> Thêm
-                    </button>
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  {chapters.map(chapter => (
-                    <div key={chapter.id} className="group border border-zinc-100 rounded-xl p-3 hover:border-zinc-300 transition-all">
+                <div className="h-px bg-zinc-100" />
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase ml-1">
+                    Thêm chương mới vào đây
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Nhập tên chương..."
+                      value={newChapterTitle}
+                      onChange={(e) => setNewChapterTitle(e.target.value)}
+                      className="flex-1 px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-2xl outline-none focus:ring-2 focus:ring-zinc-900 text-sm font-medium"
+                    />
+                    <button
+                      onClick={addChapter}
+                      className="px-6 py-3 bg-zinc-900 text-white rounded-2xl hover:bg-zinc-800 transition-all flex items-center gap-2 text-sm font-bold shadow-lg shadow-zinc-200 active:scale-95"
+                    >
+                      <Plus size={20} /> Thêm
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white border border-zinc-200 rounded-3xl p-6 space-y-4 shadow-sm min-h-[400px]">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">
+                    Cấu trúc Chương & Bài học
+                  </h3>
+                  <span className="text-[10px] bg-zinc-100 text-zinc-500 px-2 py-0.5 rounded-full font-bold">
+                    {chapters.length} Chương
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {chapters.length === 0 && (
+                    <div className="py-20 text-center text-zinc-300 italic text-sm">
+                      Chưa có chương nào trong bộ lọc này...
+                    </div>
+                  )}
+                  {chapters.map((chapter) => (
+                    <div
+                      key={chapter.id}
+                      className="group border border-zinc-100 rounded-xl p-3 hover:border-zinc-300 transition-all"
+                    >
                       <div className="flex items-center justify-between mb-3">
-                        {editingTitle?.type === 'chapter' && editingTitle?.id === chapter.id ? (
+                        {editingTitle?.type === "chapter" &&
+                        editingTitle?.id === chapter.id ? (
                           <div className="flex-1 flex gap-2">
-                            <input 
+                            <input
                               autoFocus
-                              type="text" 
+                              type="text"
                               className="flex-1 px-2 py-1 bg-zinc-50 border border-zinc-200 rounded outline-none text-sm"
                               value={editingTitle.title}
-                              onChange={(e) => setEditingTitle({...editingTitle, title: e.target.value})}
-                              onKeyDown={(e) => e.key === 'Enter' && updateChapter(chapter.id, editingTitle.title)}
+                              onChange={(e) =>
+                                setEditingTitle({
+                                  ...editingTitle,
+                                  title: e.target.value,
+                                })
+                              }
+                              onKeyDown={(e) =>
+                                e.key === "Enter" &&
+                                updateChapter(chapter.id, editingTitle.title)
+                              }
                             />
-                            <button onClick={() => updateChapter(chapter.id, editingTitle.title)} className="p-1 text-emerald-600"><Check size={16}/></button>
-                            <button onClick={() => setEditingTitle(null)} className="p-1 text-zinc-400"><X size={16}/></button>
+                            <button
+                              onClick={() =>
+                                updateChapter(chapter.id, editingTitle.title)
+                              }
+                              className="p-1 text-emerald-600"
+                            >
+                              <Check size={16} />
+                            </button>
+                            <button
+                              onClick={() => setEditingTitle(null)}
+                              className="p-1 text-zinc-400"
+                            >
+                              <X size={16} />
+                            </button>
                           </div>
                         ) : (
                           <>
-                            <span className="font-bold text-zinc-900">{chapter.title}</span>
+                            <span className="font-bold text-zinc-900">
+                              {chapter.title}
+                            </span>
                             <div className="flex items-center gap-1">
-                              <button 
-                                onClick={() => setEditingTitle({type: 'chapter', id: chapter.id, title: chapter.title})}
+                              <div className="flex items-center gap-0.5 mr-2 bg-zinc-100 rounded-lg p-0.5">
+                                <button
+                                  onClick={() => moveChapter(chapter.id, "up")}
+                                  disabled={chapters.indexOf(chapter) === 0}
+                                  className="p-1 text-zinc-400 hover:text-zinc-900 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                  title="Di chuyển lên"
+                                >
+                                  <ArrowUp size={14} />
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    moveChapter(chapter.id, "down")
+                                  }
+                                  disabled={
+                                    chapters.indexOf(chapter) ===
+                                    chapters.length - 1
+                                  }
+                                  className="p-1 text-zinc-400 hover:text-zinc-900 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                  title="Di chuyển xuống"
+                                >
+                                  <ArrowDown size={14} />
+                                </button>
+                              </div>
+                              <button
+                                onClick={() =>
+                                  setEditingTitle({
+                                    type: "chapter",
+                                    id: chapter.id,
+                                    title: chapter.title,
+                                  })
+                                }
                                 className="p-1.5 text-zinc-400 hover:text-zinc-900 transition-colors"
                               >
                                 <Edit2 size={16} />
                               </button>
-                              {isDeleting?.id === chapter.id && isDeleting?.type === 'chapter' ? (
+                              {isDeleting?.id === chapter.id &&
+                              isDeleting?.type === "chapter" ? (
                                 <div className="flex items-center gap-2">
-                                  <button onClick={() => deleteChapter(chapter.id)} className="text-[10px] bg-red-500 text-white px-2 py-1 rounded">Xóa</button>
-                                  <button onClick={() => setIsDeleting(null)} className="text-[10px] bg-zinc-200 px-2 py-1 rounded">Hủy</button>
+                                  <button
+                                    onClick={() => deleteChapter(chapter.id)}
+                                    className="text-[10px] bg-red-500 text-white px-2 py-1 rounded"
+                                  >
+                                    Xóa
+                                  </button>
+                                  <button
+                                    onClick={() => setIsDeleting(null)}
+                                    className="text-[10px] bg-zinc-200 px-2 py-1 rounded"
+                                  >
+                                    Hủy
+                                  </button>
                                 </div>
                               ) : (
-                                <button onClick={() => setIsDeleting({type: 'chapter', id: chapter.id})} className="p-1.5 text-zinc-400 hover:text-red-500 transition-colors">
+                                <button
+                                  onClick={() =>
+                                    setIsDeleting({
+                                      type: "chapter",
+                                      id: chapter.id,
+                                    })
+                                  }
+                                  className="p-1.5 text-zinc-400 hover:text-red-500 transition-colors"
+                                >
                                   <Trash2 size={16} />
                                 </button>
                               )}
@@ -513,34 +683,103 @@ export default function Admin({ onBack }: AdminProps) {
                           </>
                         )}
                       </div>
-                      
+
                       {/* Lessons in Chapter */}
                       <div className="pl-4 border-l-2 border-zinc-100 space-y-2">
-                        {chapter.lessons.map(lesson => (
-                          <div 
-                            key={lesson.id} 
-                            onClick={() => { setSelectedLessonId(lesson.id); setActiveTab('content'); }}
+                        {chapter.lessons.map((lesson) => (
+                          <div
+                            key={lesson.id}
+                            onClick={() => {
+                              setSelectedLessonId(lesson.id);
+                              setActiveTab("content");
+                            }}
                             className="flex items-center justify-between text-sm bg-zinc-50 p-2 rounded-lg cursor-pointer hover:bg-zinc-100 transition-colors group/lesson"
                           >
-                            {editingTitle?.type === 'lesson' && editingTitle?.id === lesson.id ? (
-                              <div className="flex-1 flex gap-2" onClick={(e) => e.stopPropagation()}>
-                                <input 
+                            {editingTitle?.type === "lesson" &&
+                            editingTitle?.id === lesson.id ? (
+                              <div
+                                className="flex-1 flex gap-2"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <input
                                   autoFocus
-                                  type="text" 
+                                  type="text"
                                   className="flex-1 px-2 py-0.5 bg-white border border-zinc-200 rounded outline-none text-xs"
                                   value={editingTitle.title}
-                                  onChange={(e) => setEditingTitle({...editingTitle, title: e.target.value})}
-                                  onKeyDown={(e) => e.key === 'Enter' && updateLesson(lesson.id, editingTitle.title)}
+                                  onChange={(e) =>
+                                    setEditingTitle({
+                                      ...editingTitle,
+                                      title: e.target.value,
+                                    })
+                                  }
+                                  onKeyDown={(e) =>
+                                    e.key === "Enter" &&
+                                    updateLesson(lesson.id, editingTitle.title)
+                                  }
                                 />
-                                <button onClick={() => updateLesson(lesson.id, editingTitle.title)} className="text-emerald-600"><Check size={14}/></button>
-                                <button onClick={() => setEditingTitle(null)} className="text-zinc-400"><X size={14}/></button>
+                                <button
+                                  onClick={() =>
+                                    updateLesson(lesson.id, editingTitle.title)
+                                  }
+                                  className="text-emerald-600"
+                                >
+                                  <Check size={14} />
+                                </button>
+                                <button
+                                  onClick={() => setEditingTitle(null)}
+                                  className="text-zinc-400"
+                                >
+                                  <X size={14} />
+                                </button>
                               </div>
                             ) : (
                               <>
-                                <span className="text-zinc-600 group-hover/lesson:text-zinc-900 font-medium">{lesson.title}</span>
+                                <span className="text-zinc-600 group-hover/lesson:text-zinc-900 font-medium">
+                                  {lesson.title}
+                                </span>
                                 <div className="flex items-center gap-1">
-                                  <button 
-                                    onClick={(e) => { e.stopPropagation(); setEditingTitle({type: 'lesson', id: lesson.id, title: lesson.title}); }}
+                                  <div className="flex items-center gap-0.5 mr-1 bg-white rounded-lg p-0.5 opacity-0 group-hover/lesson:opacity-100 transition-opacity">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        moveLesson(chapter.id, lesson.id, "up");
+                                      }}
+                                      disabled={
+                                        chapter.lessons.indexOf(lesson) === 0
+                                      }
+                                      className="p-0.5 text-zinc-400 hover:text-zinc-900 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                      title="Di chuyển lên"
+                                    >
+                                      <ArrowUp size={12} />
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        moveLesson(
+                                          chapter.id,
+                                          lesson.id,
+                                          "down",
+                                        );
+                                      }}
+                                      disabled={
+                                        chapter.lessons.indexOf(lesson) ===
+                                        chapter.lessons.length - 1
+                                      }
+                                      className="p-0.5 text-zinc-400 hover:text-zinc-900 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                      title="Di chuyển xuống"
+                                    >
+                                      <ArrowDown size={12} />
+                                    </button>
+                                  </div>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingTitle({
+                                        type: "lesson",
+                                        id: lesson.id,
+                                        title: lesson.title,
+                                      });
+                                    }}
                                     className="p-1 text-zinc-400 hover:text-zinc-900 opacity-0 group-hover/lesson:opacity-100 transition-opacity"
                                   >
                                     <Edit2 size={14} />
@@ -548,16 +787,26 @@ export default function Admin({ onBack }: AdminProps) {
                                   <div className="p-1 text-zinc-400">
                                     <ChevronRight size={16} />
                                   </div>
-                                  {isDeleting?.id === lesson.id && isDeleting?.type === 'lesson' ? (
-                                    <button 
-                                      onClick={(e) => { e.stopPropagation(); deleteLesson(lesson.id); }} 
+                                  {isDeleting?.id === lesson.id &&
+                                  isDeleting?.type === "lesson" ? (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        deleteLesson(lesson.id);
+                                      }}
                                       className="text-[10px] text-red-500 font-bold px-1"
                                     >
                                       Xác nhận
                                     </button>
                                   ) : (
-                                    <button 
-                                      onClick={(e) => { e.stopPropagation(); setIsDeleting({type: 'lesson', id: lesson.id}); }} 
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setIsDeleting({
+                                          type: "lesson",
+                                          id: lesson.id,
+                                        });
+                                      }}
                                       className="p-1 text-zinc-400 hover:text-red-500 opacity-0 group-hover/lesson:opacity-100 transition-opacity"
                                     >
                                       <Trash2 size={14} />
@@ -569,14 +818,14 @@ export default function Admin({ onBack }: AdminProps) {
                           </div>
                         ))}
                         <div className="pt-2 flex flex-col gap-2">
-                          <input 
-                            type="text" 
-                            placeholder="Tên bài học mới..." 
+                          <input
+                            type="text"
+                            placeholder="Tên bài học mới..."
                             className="w-full px-3 py-1.5 bg-white border border-zinc-200 rounded-lg text-xs outline-none"
                             onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
+                              if (e.key === "Enter") {
                                 addLesson(chapter.id, e.currentTarget.value);
-                                e.currentTarget.value = '';
+                                e.currentTarget.value = "";
                               }
                             }}
                           />
@@ -590,7 +839,9 @@ export default function Admin({ onBack }: AdminProps) {
 
             <div className="hidden lg:flex flex-col items-center justify-center text-zinc-400 space-y-4 border-2 border-dashed border-zinc-200 rounded-3xl">
               <FileText size={48} />
-              <p className="text-sm">Chọn một bài học để chỉnh sửa nội dung chi tiết</p>
+              <p className="text-sm">
+                Chọn một bài học để chỉnh sửa nội dung chi tiết
+              </p>
             </div>
           </div>
         ) : (
@@ -601,925 +852,108 @@ export default function Admin({ onBack }: AdminProps) {
               </div>
             ) : (
               <div className="space-y-12">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-2xl font-bold text-zinc-900">{lessonData?.title}</h2>
-                    <p className="text-zinc-500">{lessonData?.description}</p>
-                  </div>
-                  <button onClick={() => setActiveTab('chapters')} className="text-sm font-medium text-zinc-500 hover:text-zinc-900">
-                    Đổi bài học
+                <LessonHeader
+                  lessonData={lessonData}
+                  selectedLessonId={selectedLessonId}
+                  editingContent={editingContent}
+                  setEditingContent={setEditingContent}
+                  fetchLessonDetails={fetchLessonDetails}
+                  setActiveTab={setActiveTab}
+                />
+
+                {/* Sub-tabs for content sections */}
+                <div className="flex items-center gap-2 border-b border-zinc-100 pb-4">
+                  <button
+                    onClick={() => setLessonTab("formulas")}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${lessonTab === "formulas" ? "bg-zinc-900 text-white shadow-lg shadow-zinc-200" : "text-zinc-500 hover:bg-zinc-100"}`}
+                  >
+                    <Calculator size={18} />
+                    Tóm tắt công thức
+                  </button>
+                  <button
+                    onClick={() => setLessonTab("examples")}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${lessonTab === "examples" ? "bg-zinc-900 text-white shadow-lg shadow-zinc-200" : "text-zinc-500 hover:bg-zinc-100"}`}
+                  >
+                    <Lightbulb size={18} />
+                    Phân dạng & PP giải
+                  </button>
+                  <button
+                    onClick={() => setLessonTab("exercises")}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${lessonTab === "exercises" ? "bg-zinc-900 text-white shadow-lg shadow-zinc-200" : "text-zinc-500 hover:bg-zinc-100"}`}
+                  >
+                    <Dumbbell size={18} />
+                    Bài tập
+                  </button>
+                  <button
+                    onClick={() => setLessonTab("quizzes")}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${lessonTab === "quizzes" ? "bg-zinc-900 text-white shadow-lg shadow-zinc-200" : "text-zinc-500 hover:bg-zinc-100"}`}
+                  >
+                    <ListChecks size={18} />
+                    Trắc nghiệm
                   </button>
                 </div>
 
-                {/* 1. Formulas */}
-                <section className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-bold flex items-center gap-2">
-                      <Calculator size={20} className="text-zinc-400" />
-                      Công thức
-                    </h3>
-                  </div>
-                  <div className="space-y-4">
-                    {(lessonData?.formulas || []).map(f => (
-                      <div key={f.id} className="bg-white border border-zinc-200 rounded-2xl p-4 flex flex-col gap-4">
-                        {editingContent?.type === 'formula' && editingContent?.id === f.id ? (
-                          <div className="space-y-3">
-                            <textarea 
-                              className="w-full bg-zinc-50 border border-zinc-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-zinc-900 min-h-[100px]"
-                              value={editingContent.data.content}
-                              onChange={(e) => setEditingContent({...editingContent, data: {content: e.target.value}})}
-                            />
-                            <div className="flex gap-2">
-                              <button 
-                                onClick={() => updateContent('formula', f.id, editingContent.data)}
-                                className="flex-1 py-2 bg-zinc-900 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2"
-                              >
-                                <Check size={16} /> Lưu
-                              </button>
-                              <button 
-                                onClick={() => setEditingContent(null)}
-                                className="px-4 py-2 bg-zinc-100 text-zinc-600 rounded-xl font-bold text-sm"
-                              >
-                                Hủy
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex justify-between items-start gap-4">
-                            <code className="text-sm bg-zinc-50 p-2 rounded block flex-1 overflow-x-auto">{f.content}</code>
-                            <div className="flex items-center gap-2">
-                              <button 
-                                onClick={() => setEditingContent({type: 'formula', id: f.id, data: {content: f.content}})}
-                                className="text-zinc-400 hover:text-zinc-900"
-                              >
-                                <Edit2 size={18} />
-                              </button>
-                              <button onClick={() => deleteContent('formula', f.id)} className="text-zinc-400 hover:text-red-500">
-                                <Trash2 size={18} />
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                    <div className="bg-zinc-900 rounded-2xl p-4 space-y-3">
-                      <textarea 
-                        placeholder="Nhập mã LaTeX (VD: $$\sin^2 x + \cos^2 x = 1$$)" 
-                        className="w-full bg-zinc-800 text-white border-none rounded-xl p-3 text-sm outline-none focus:ring-1 focus:ring-white/20 min-h-[100px]"
-                        id="new-formula"
-                      />
-                      <button 
-                        onClick={() => {
-                          const el = document.getElementById('new-formula') as HTMLTextAreaElement;
-                          if (el.value) {
-                            addContent('formula', { content: el.value });
-                            el.value = '';
-                          }
-                        }}
-                        className="w-full py-2 bg-white text-zinc-900 rounded-xl font-bold text-sm hover:bg-zinc-100 transition-colors"
-                      >
-                        Thêm công thức
-                      </button>
-                    </div>
-                  </div>
-                </section>
+                {lessonTab === "formulas" && (
+                  <FormulasSection
+                    lessonData={lessonData}
+                    newFormula={newFormula}
+                    setNewFormula={setNewFormula}
+                    addContent={addContent}
+                    updateContent={updateContent}
+                    deleteContent={deleteContent}
+                    editingContent={editingContent}
+                    setEditingContent={setEditingContent}
+                  />
+                )}
 
-                {/* 2. Examples */}
-                <section className="space-y-4">
-                  <h3 className="font-bold flex items-center gap-2">
-                    <Lightbulb size={20} className="text-zinc-400" />
-                    Dạng bài & Phương pháp
-                  </h3>
-                  <div className="space-y-4">
-                    {(lessonData?.examples || []).map(ex => (
-                      <div key={ex.id} className="bg-white border border-zinc-200 rounded-2xl p-6 space-y-4 relative group">
-                        <div className="absolute top-4 right-4 flex items-center gap-2">
-                          <button 
-                            onClick={() => setEditingContent({
-                              type: 'example', 
-                              id: ex.id, 
-                              data: {
-                                title: ex.title, 
-                                items: ex.items || [{ problem: (ex as any).problem || '', solution: (ex as any).solution || '' }]
-                              }
-                            })}
-                            className="text-zinc-400 hover:text-zinc-900"
-                          >
-                            <Edit2 size={18} />
-                          </button>
-                          <button onClick={() => deleteContent('example', ex.id)} className="text-zinc-400 hover:text-red-500">
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
-                        
-                        {editingContent?.type === 'example' && editingContent?.id === ex.id ? (
-                          <div className="space-y-4 pt-4">
-                            <div className="space-y-1">
-                              <div className="flex items-center justify-between">
-                                <label className="text-[10px] font-bold text-zinc-400 uppercase">Mô tả dạng bài & phương pháp</label>
-                                <ImageUploader onUpload={(url) => setEditingContent({...editingContent, data: {...editingContent.data, title: editingContent.data.title + `\n![image](${url})`}})} />
-                              </div>
-                              <textarea 
-                                className="w-full px-4 py-2 bg-zinc-50 rounded-xl outline-none text-sm border border-zinc-200 min-h-[120px]"
-                                value={editingContent.data.title}
-                                onChange={(e) => setEditingContent({...editingContent, data: {...editingContent.data, title: e.target.value}})}
-                              />
-                            </div>
-                            
-                            <div className="space-y-4">
-                              {(editingContent.data.items || []).map((item: any, i: number) => (
-                                <div key={i} className="p-4 border border-zinc-100 rounded-2xl bg-zinc-50/50 space-y-3 relative">
-                                  <button 
-                                    onClick={() => {
-                                      const newItems = [...(editingContent.data.items || [])];
-                                      newItems.splice(i, 1);
-                                      setEditingContent({...editingContent, data: {...editingContent.data, items: newItems}});
-                                    }}
-                                    className="absolute top-2 right-2 text-zinc-300 hover:text-red-500"
-                                  >
-                                    <X size={14} />
-                                  </button>
-                                  <div className="space-y-1">
-                                    <div className="flex items-center justify-between">
-                                      <label className="text-[10px] font-bold text-zinc-400 uppercase">Ví dụ {i + 1} - Đề bài</label>
-                                      <ImageUploader onUpload={(url) => {
-                                        const newItems = [...editingContent.data.items];
-                                        newItems[i].problem += `\n![image](${url})`;
-                                        setEditingContent({...editingContent, data: {...editingContent.data, items: newItems}});
-                                      }} />
-                                    </div>
-                                    <textarea 
-                                      className="w-full px-4 py-2 bg-white rounded-xl outline-none text-sm min-h-[80px] border border-zinc-200"
-                                      value={item.problem}
-                                      onChange={(e) => {
-                                        const newItems = [...editingContent.data.items];
-                                        newItems[i].problem = e.target.value;
-                                        setEditingContent({...editingContent, data: {...editingContent.data, items: newItems}});
-                                      }}
-                                    />
-                                  </div>
-                                  <div className="space-y-1">
-                                    <div className="flex items-center justify-between">
-                                      <label className="text-[10px] font-bold text-zinc-400 uppercase">Ví dụ {i + 1} - Lời giải</label>
-                                      <ImageUploader onUpload={(url) => {
-                                        const newItems = [...editingContent.data.items];
-                                        newItems[i].solution += `\n![image](${url})`;
-                                        setEditingContent({...editingContent, data: {...editingContent.data, items: newItems}});
-                                      }} />
-                                    </div>
-                                    <textarea 
-                                      className="w-full px-4 py-2 bg-white rounded-xl outline-none text-sm min-h-[80px] border border-zinc-200"
-                                      value={item.solution}
-                                      onChange={(e) => {
-                                        const newItems = [...(editingContent.data.items || [])];
-                                        newItems[i].solution = e.target.value;
-                                        setEditingContent({...editingContent, data: {...editingContent.data, items: newItems}});
-                                      }}
-                                    />
-                                  </div>
-                                </div>
-                              ))}
-                              <button 
-                                onClick={() => {
-                                  const newItems = [...(editingContent.data.items || []), { problem: '', solution: '' }];
-                                  setEditingContent({...editingContent, data: {...editingContent.data, items: newItems}});
-                                }}
-                                className="w-full py-2 border-2 border-dashed border-zinc-200 rounded-xl text-zinc-400 text-xs font-bold hover:border-zinc-400 hover:text-zinc-600 transition-all"
-                              >
-                                + Thêm ví dụ minh họa
-                              </button>
-                            </div>
+                {lessonTab === "examples" && (
+                  <ExamplesSection
+                    lessonData={lessonData}
+                    selectedExampleId={selectedExampleId}
+                    setSelectedExampleId={setSelectedExampleId}
+                    exampleSubTab={exampleSubTab}
+                    setExampleSubTab={setExampleSubTab}
+                    newExample={newExample}
+                    setNewExample={setNewExample}
+                    editingContent={editingContent}
+                    setEditingContent={setEditingContent}
+                    addContent={addContent}
+                    updateContent={updateContent}
+                    deleteContent={deleteContent}
+                  />
+                )}
 
-                            <div className="flex gap-2">
-                              <button 
-                                onClick={() => updateContent('example', ex.id, editingContent.data)}
-                                className="flex-1 py-2 bg-zinc-900 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2"
-                              >
-                                <Check size={16} /> Lưu thay đổi
-                              </button>
-                              <button 
-                                onClick={() => setEditingContent(null)}
-                                className="px-4 py-2 bg-zinc-100 text-zinc-600 rounded-xl font-bold text-sm"
-                              >
-                                Hủy
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="markdown-body prose prose-zinc max-w-full mb-4 break-words">
-                              <Markdown remarkPlugins={[remarkMath, remarkBreaks]} rehypePlugins={[rehypeKatex]}>
-                                {ex.title}
-                              </Markdown>
-                            </div>
-                            <div className="space-y-4">
-                              {(ex.items || []).map((item, i) => (
-                                <div key={i} className="relative group/item grid md:grid-cols-2 gap-4 text-sm">
-                                  <button 
-                                    onClick={() => {
-                                      if (window.confirm('Bạn có chắc muốn xóa ví dụ này?')) {
-                                        const newItems = [...(ex.items || [])];
-                                        newItems.splice(i, 1);
-                                        updateContent('example', ex.id, { ...ex, items: newItems });
-                                      }
-                                    }}
-                                    className="absolute -right-2 -top-2 w-6 h-6 bg-white border border-zinc-200 rounded-full flex items-center justify-center text-zinc-400 hover:text-red-500 hover:border-red-200 shadow-sm transition-all z-10"
-                                    title="Xóa ví dụ này"
-                                  >
-                                    <X size={14} />
-                                  </button>
-                                  <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100">
-                                    <p className="font-bold text-blue-600/60 text-[10px] uppercase mb-1">Đề bài {(ex.items || []).length > 1 ? i + 1 : ''}</p>
-                                    <div className="markdown-body prose prose-sm prose-zinc max-w-none">
-                                      <Markdown remarkPlugins={[remarkMath, remarkBreaks]} rehypePlugins={[rehypeKatex]}>{item.problem}</Markdown>
-                                    </div>
-                                  </div>
-                                  <div className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-100">
-                                    <p className="font-bold text-emerald-600/60 text-[10px] uppercase mb-1">Lời giải {(ex.items || []).length > 1 ? i + 1 : ''}</p>
-                                    <div className="markdown-body prose prose-sm prose-emerald max-w-none">
-                                      <Markdown remarkPlugins={[remarkMath, remarkBreaks]} rehypePlugins={[rehypeKatex]}>{item.solution}</Markdown>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                              {(!ex.items || ex.items.length === 0) && (
-                                <div className="relative group/item grid md:grid-cols-2 gap-4 text-sm">
-                                  <button 
-                                    onClick={() => {
-                                      if (window.confirm('Bạn có chắc muốn xóa ví dụ này?')) {
-                                        updateContent('example', ex.id, { ...ex, problem: '', solution: '' });
-                                      }
-                                    }}
-                                    className="absolute -right-2 -top-2 w-6 h-6 bg-white border border-zinc-200 rounded-full flex items-center justify-center text-zinc-400 hover:text-red-500 hover:border-red-200 shadow-sm transition-all z-10"
-                                    title="Xóa ví dụ này"
-                                  >
-                                    <X size={14} />
-                                  </button>
-                                  <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100">
-                                    <p className="font-bold text-blue-600/60 text-[10px] uppercase mb-1">Đề bài</p>
-                                    <div className="markdown-body prose prose-sm prose-zinc max-w-none">
-                                      <Markdown remarkPlugins={[remarkMath, remarkBreaks]} rehypePlugins={[rehypeKatex]}>{(ex as any).problem}</Markdown>
-                                    </div>
-                                  </div>
-                                  <div className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-100">
-                                    <p className="font-bold text-emerald-600/60 text-[10px] uppercase mb-1">Lời giải</p>
-                                    <div className="markdown-body prose prose-sm prose-emerald max-w-none">
-                                      <Markdown remarkPlugins={[remarkMath, remarkBreaks]} rehypePlugins={[rehypeKatex]}>{(ex as any).solution}</Markdown>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    ))}
-                    
-                    <div className="bg-white border-2 border-dashed border-zinc-200 rounded-2xl p-6 space-y-6">
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <label className="text-[10px] font-bold text-zinc-400 uppercase">Mô tả dạng bài & phương pháp</label>
-                          <ImageUploader onUpload={(url) => setNewExample({...newExample, title: newExample.title + `\n![image](${url})`})} />
-                        </div>
-                        <textarea 
-                          placeholder="Nhập mô tả dạng bài và phương pháp giải (hỗ trợ LaTeX)..." 
-                          className="w-full px-4 py-2 bg-zinc-50 rounded-xl outline-none text-sm min-h-[120px]"
-                          value={newExample.title}
-                          onChange={(e) => setNewExample({...newExample, title: e.target.value})}
-                        />
-                      </div>
+                {lessonTab === "exercises" && (
+                  <ExercisesSection
+                    lessonData={lessonData}
+                    newPractice={newPractice}
+                    setNewPractice={setNewPractice}
+                    editingContent={editingContent}
+                    setEditingContent={setEditingContent}
+                    addContent={addContent}
+                    updateContent={updateContent}
+                    deleteContent={deleteContent}
+                  />
+                )}
 
-                      <div className="space-y-4">
-                        {newExample.items.map((item, i) => (
-                          <div key={i} className="p-4 border border-zinc-100 rounded-2xl bg-zinc-50/50 space-y-3 relative">
-                            {newExample.items.length > 1 && (
-                              <button 
-                                onClick={() => {
-                                  const newItems = [...newExample.items];
-                                  newItems.splice(i, 1);
-                                  setNewExample({...newExample, items: newItems});
-                                }}
-                                className="absolute top-2 right-2 text-zinc-300 hover:text-red-500"
-                              >
-                                <X size={14} />
-                              </button>
-                            )}
-                            <div className="space-y-1">
-                              <div className="flex items-center justify-between">
-                                <label className="text-[10px] font-bold text-zinc-400 uppercase">Ví dụ minh họa {i + 1} - Đề bài</label>
-                                <ImageUploader onUpload={(url) => {
-                                  const newItems = [...newExample.items];
-                                  newItems[i].problem += `\n![image](${url})`;
-                                  setNewExample({...newExample, items: newItems});
-                                }} />
-                              </div>
-                              <textarea 
-                                placeholder="Nhập đề bài..." 
-                                className="w-full px-4 py-2 bg-white rounded-xl outline-none text-sm min-h-[80px] border border-zinc-200"
-                                value={item.problem}
-                                onChange={(e) => {
-                                  const newItems = [...newExample.items];
-                                  newItems[i].problem = e.target.value;
-                                  setNewExample({...newExample, items: newItems});
-                                }}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <div className="flex items-center justify-between">
-                                <label className="text-[10px] font-bold text-zinc-400 uppercase">Ví dụ minh họa {i + 1} - Lời giải</label>
-                                <ImageUploader onUpload={(url) => {
-                                  const newItems = [...newExample.items];
-                                  newItems[i].solution += `\n![image](${url})`;
-                                  setNewExample({...newExample, items: newItems});
-                                }} />
-                              </div>
-                              <textarea 
-                                placeholder="Nhập lời giải..." 
-                                className="w-full px-4 py-2 bg-white rounded-xl outline-none text-sm min-h-[80px] border border-zinc-200"
-                                value={item.solution}
-                                onChange={(e) => {
-                                  const newItems = [...newExample.items];
-                                  newItems[i].solution = e.target.value;
-                                  setNewExample({...newExample, items: newItems});
-                                }}
-                              />
-                            </div>
-                          </div>
-                        ))}
-                        <button 
-                          onClick={() => setNewExample({...newExample, items: [...newExample.items, { problem: '', solution: '' }]})}
-                          className="w-full py-2 border-2 border-dashed border-zinc-200 rounded-xl text-zinc-400 text-xs font-bold hover:border-zinc-400 hover:text-zinc-600 transition-all"
-                        >
-                          + Thêm ví dụ minh họa
-                        </button>
-                      </div>
-
-                      <button 
-                        onClick={() => {
-                          if (newExample.title && newExample.items[0].problem) {
-                            addContent('example', newExample);
-                            setNewExample({ title: '', items: [{ problem: '', solution: '' }] });
-                          }
-                        }}
-                        className="w-full py-3 bg-zinc-900 text-white rounded-xl font-bold text-sm hover:bg-zinc-800 transition-colors"
-                      >
-                        Lưu Dạng bài & Phương pháp
-                      </button>
-                    </div>
-                  </div>
-                </section>
-
-                {/* 3. Practice */}
-                <section className="space-y-4">
-                  <h3 className="font-bold flex items-center gap-2">
-                    <Dumbbell size={20} className="text-zinc-400" />
-                    Bài tập Tự rèn
-                  </h3>
-                  <div className="space-y-4">
-                    {(lessonData?.practice || []).map(ex => (
-                      <div key={ex.id} className="bg-white border border-zinc-200 rounded-2xl p-6 space-y-4 relative group">
-                        <div className="absolute top-4 right-4 flex items-center gap-2">
-                          <button 
-                            onClick={() => setEditingContent({
-                              type: 'practice', 
-                              id: ex.id, 
-                              data: { ...ex }
-                            })}
-                            className="text-zinc-400 hover:text-zinc-900"
-                          >
-                            <Edit2 size={18} />
-                          </button>
-                          <button 
-                            onClick={() => deleteContent('practice', ex.id)}
-                            className="text-zinc-400 hover:text-rose-600"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
-                        
-                        {editingContent?.type === 'practice' && editingContent.id === ex.id ? (
-                          <div className="space-y-4 pt-4">
-                            <input 
-                              type="text"
-                              value={editingContent.data.title}
-                              onChange={(e) => setEditingContent({
-                                ...editingContent,
-                                data: { ...editingContent.data, title: e.target.value }
-                              })}
-                              className="w-full p-3 bg-zinc-50 border border-zinc-200 rounded-xl font-bold"
-                              placeholder="Tiêu đề bài tập..."
-                            />
-                            
-                            <div className="space-y-6">
-                              {(editingContent.data.items || []).map((item: any, idx: number) => (
-                                <div key={idx} className="p-4 bg-zinc-50 rounded-2xl border border-zinc-200 space-y-4 relative">
-                                  <button 
-                                    onClick={() => {
-                                      const newItems = [...editingContent.data.items];
-                                      newItems.splice(idx, 1);
-                                      setEditingContent({
-                                        ...editingContent,
-                                        data: { ...editingContent.data, items: newItems }
-                                      });
-                                    }}
-                                    className="absolute top-2 right-2 text-zinc-400 hover:text-rose-600"
-                                  >
-                                    <X size={16} />
-                                  </button>
-                                  
-                                  <div className="space-y-2">
-                                    <label className="text-xs font-bold text-zinc-400 uppercase">Đề bài {idx + 1}</label>
-                                    <textarea 
-                                      value={item.problem}
-                                      onChange={(e) => {
-                                        const newItems = [...editingContent.data.items];
-                                        newItems[idx] = { ...newItems[idx], problem: e.target.value };
-                                        setEditingContent({ ...editingContent, data: { ...editingContent.data, items: newItems } });
-                                      }}
-                                      className="w-full p-3 bg-white border border-zinc-200 rounded-xl text-sm min-h-[100px]"
-                                      placeholder="Nhập đề bài..."
-                                    />
-                                    <ImageUploader onUpload={(url) => {
-                                      const newItems = [...editingContent.data.items];
-                                      newItems[idx] = { ...newItems[idx], problem: (newItems[idx].problem || '') + `\n\n![image](${url})\n` };
-                                      setEditingContent({ ...editingContent, data: { ...editingContent.data, items: newItems } });
-                                    }} />
-                                  </div>
-                                  
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                      <label className="text-xs font-bold text-zinc-400 uppercase">Gợi ý</label>
-                                      <textarea 
-                                        value={item.hint || ''}
-                                        onChange={(e) => {
-                                          const newItems = [...editingContent.data.items];
-                                          newItems[idx] = { ...newItems[idx], hint: e.target.value };
-                                          setEditingContent({ ...editingContent, data: { ...editingContent.data, items: newItems } });
-                                        }}
-                                        className="w-full p-3 bg-white border border-zinc-200 rounded-xl text-sm min-h-[80px]"
-                                        placeholder="Gợi ý (nếu có)..."
-                                      />
-                                    </div>
-                                    <div className="space-y-2">
-                                      <label className="text-xs font-bold text-zinc-400 uppercase">Đáp số</label>
-                                      <textarea 
-                                        value={item.answer || ''}
-                                        onChange={(e) => {
-                                          const newItems = [...editingContent.data.items];
-                                          newItems[idx] = { ...newItems[idx], answer: e.target.value };
-                                          setEditingContent({ ...editingContent, data: { ...editingContent.data, items: newItems } });
-                                        }}
-                                        className="w-full p-3 bg-white border border-zinc-200 rounded-xl text-sm min-h-[80px]"
-                                        placeholder="Đáp số..."
-                                      />
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                              
-                              <button 
-                                onClick={() => {
-                                  const newItems = [...(editingContent.data.items || []), { problem: '', hint: '', answer: '' }];
-                                  setEditingContent({ ...editingContent, data: { ...editingContent.data, items: newItems } });
-                                }}
-                                className="w-full py-2 border-2 border-dashed border-zinc-200 rounded-xl text-zinc-400 text-xs font-bold hover:border-zinc-400 hover:text-zinc-600 transition-all"
-                              >
-                                + Thêm câu hỏi
-                              </button>
-                            </div>
-
-                            <div className="flex gap-2">
-                              <button 
-                                onClick={() => updateContent('practice', editingContent.id, editingContent.data)}
-                                className="flex-1 py-3 bg-zinc-900 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2"
-                              >
-                                <Check size={18} /> Cập nhật
-                              </button>
-                              <button 
-                                onClick={() => setEditingContent(null)}
-                                className="px-6 py-3 bg-zinc-100 text-zinc-600 rounded-xl font-bold text-sm"
-                              >
-                                Hủy
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="space-y-2">
-                            <div className="font-bold text-zinc-900">{ex.title}</div>
-                            <div className="text-sm text-zinc-500">{(ex.items || []).length} câu hỏi</div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-
-                    {/* Add New Practice */}
-                    <div className="bg-zinc-50 border border-zinc-200 rounded-2xl p-6 space-y-4">
-                      <div className="text-sm font-bold text-zinc-400 uppercase tracking-widest">Thêm bài tập tự rèn mới</div>
-                      <input 
-                        type="text"
-                        value={newPractice.title}
-                        onChange={(e) => setNewPractice({...newPractice, title: e.target.value})}
-                        className="w-full p-3 bg-white border border-zinc-200 rounded-xl font-bold"
-                        placeholder="Tiêu đề bài tập..."
-                      />
-                      
-                      <div className="space-y-4">
-                        {newPractice.items.map((item, idx) => (
-                          <div key={idx} className="p-4 bg-white rounded-2xl border border-zinc-200 space-y-4 relative">
-                            {newPractice.items.length > 1 && (
-                              <button 
-                                onClick={() => {
-                                  const newItems = [...newPractice.items];
-                                  newItems.splice(idx, 1);
-                                  setNewPractice({...newPractice, items: newItems});
-                                }}
-                                className="absolute top-2 right-2 text-zinc-400 hover:text-rose-600"
-                              >
-                                <X size={16} />
-                              </button>
-                            )}
-                            
-                            <div className="space-y-2">
-                              <label className="text-xs font-bold text-zinc-400 uppercase">Đề bài {idx + 1}</label>
-                              <textarea 
-                                value={item.problem}
-                                onChange={(e) => {
-                                  const newItems = [...newPractice.items];
-                                  newItems[idx] = { ...newItems[idx], problem: e.target.value };
-                                  setNewPractice({...newPractice, items: newItems});
-                                }}
-                                className="w-full p-3 bg-zinc-50 border border-zinc-200 rounded-xl text-sm min-h-[100px]"
-                                placeholder="Nhập đề bài..."
-                              />
-                              <ImageUploader onUpload={(url) => {
-                                const newItems = [...newPractice.items];
-                                newItems[idx] = { ...newItems[idx], problem: (newItems[idx].problem || '') + `\n\n![image](${url})\n` };
-                                setNewPractice({...newPractice, items: newItems});
-                              }} />
-                            </div>
-                            
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                <label className="text-xs font-bold text-zinc-400 uppercase">Gợi ý</label>
-                                <textarea 
-                                  value={item.hint}
-                                  onChange={(e) => {
-                                    const newItems = [...newPractice.items];
-                                    newItems[idx] = { ...newItems[idx], hint: e.target.value };
-                                    setNewPractice({...newPractice, items: newItems});
-                                  }}
-                                  className="w-full p-3 bg-zinc-50 border border-zinc-200 rounded-xl text-sm min-h-[80px]"
-                                  placeholder="Gợi ý (nếu có)..."
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <label className="text-xs font-bold text-zinc-400 uppercase">Đáp số</label>
-                                <textarea 
-                                  value={item.answer}
-                                  onChange={(e) => {
-                                    const newItems = [...newPractice.items];
-                                    newItems[idx] = { ...newItems[idx], answer: e.target.value };
-                                    setNewPractice({...newPractice, items: newItems});
-                                  }}
-                                  className="w-full p-3 bg-zinc-50 border border-zinc-200 rounded-xl text-sm min-h-[80px]"
-                                  placeholder="Đáp số..."
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                        
-                        <button 
-                          onClick={() => setNewPractice({...newPractice, items: [...newPractice.items, { problem: '', hint: '', answer: '' }]})}
-                          className="w-full py-2 border-2 border-dashed border-zinc-200 rounded-xl text-zinc-400 text-xs font-bold hover:border-zinc-400 hover:text-zinc-600 transition-all"
-                        >
-                          + Thêm câu hỏi
-                        </button>
-                      </div>
-
-                      <button 
-                        onClick={() => {
-                          if (newPractice.title && newPractice.items[0].problem) {
-                            addContent('practice', newPractice);
-                            setNewPractice({ title: '', items: [{ problem: '', hint: '', answer: '' }] });
-                          }
-                        }}
-                        className="w-full py-3 bg-zinc-900 text-white rounded-xl font-bold text-sm hover:bg-zinc-800 transition-colors"
-                      >
-                        Lưu Bài tập Tự rèn
-                      </button>
-                    </div>
-                  </div>
-                </section>
-
-                {/* 4. Quizzes */}
-                <section className="space-y-4">
-                  <h3 className="font-bold flex items-center gap-2">
-                    <ListChecks size={20} className="text-zinc-400" />
-                    Trắc nghiệm
-                  </h3>
-                  <div className="space-y-4">
-                    {(lessonData?.quizzes || []).map(q => (
-                      <div key={q.id} className="bg-white border border-zinc-200 rounded-2xl p-6 space-y-4 relative group">
-                        <div className="absolute top-4 right-4 flex items-center gap-2">
-                          <button 
-                            onClick={() => setEditingContent({
-                              type: 'quiz', 
-                              id: q.id, 
-                              data: { ...q }
-                            })}
-                            className="text-zinc-400 hover:text-zinc-900"
-                          >
-                            <Edit2 size={18} />
-                          </button>
-                          <button onClick={() => deleteContent('quiz', q.id)} className="text-zinc-400 hover:text-red-500">
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
-
-                        {editingContent?.type === 'quiz' && editingContent?.id === q.id ? (
-                          <div className="space-y-4 pt-4">
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-zinc-400 uppercase">Tiêu đề phần trắc nghiệm</label>
-                              <input 
-                                className="w-full px-4 py-2 bg-zinc-50 rounded-xl outline-none text-sm border border-zinc-200"
-                                value={editingContent.data.title}
-                                onChange={(e) => setEditingContent({...editingContent, data: {...editingContent.data, title: e.target.value}})}
-                              />
-                            </div>
-                            
-                            <div className="space-y-6">
-                              {(editingContent.data.items || []).map((item: any, i: number) => (
-                                <div key={i} className="p-4 border border-zinc-100 rounded-2xl bg-zinc-50/50 space-y-4 relative">
-                                  <button 
-                                    onClick={() => {
-                                      const newItems = [...editingContent.data.items];
-                                      newItems.splice(i, 1);
-                                      setEditingContent({...editingContent, data: {...editingContent.data, items: newItems}});
-                                    }}
-                                    className="absolute top-2 right-2 text-zinc-300 hover:text-red-500"
-                                  >
-                                    <X size={14} />
-                                  </button>
-                                  <div className="space-y-1">
-                                    <div className="flex items-center justify-between">
-                                      <label className="text-[10px] font-bold text-zinc-400 uppercase">Câu hỏi {i + 1}</label>
-                                      <ImageUploader onUpload={(url) => {
-                                        const newItems = [...editingContent.data.items];
-                                        newItems[i].question += `\n![image](${url})`;
-                                        setEditingContent({...editingContent, data: {...editingContent.data, items: newItems}});
-                                      }} />
-                                    </div>
-                                    <textarea 
-                                      className="w-full px-4 py-2 bg-white rounded-xl outline-none text-sm min-h-[60px] border border-zinc-200"
-                                      value={item.question}
-                                      onChange={(e) => {
-                                        const newItems = [...editingContent.data.items];
-                                        newItems[i].question = e.target.value;
-                                        setEditingContent({...editingContent, data: {...editingContent.data, items: newItems}});
-                                      }}
-                                    />
-                                  </div>
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {(item.options || []).map((opt: any, optIdx: number) => (
-                                      <div key={optIdx} className="space-y-1">
-                                        <label className="text-[10px] font-bold text-zinc-400 uppercase">Lựa chọn {opt.label}</label>
-                                        <input 
-                                          type="text"
-                                          className="w-full px-4 py-2 bg-white rounded-xl outline-none text-sm border border-zinc-200"
-                                          value={opt.content}
-                                          onChange={(e) => {
-                                            const newItems = [...editingContent.data.items];
-                                            newItems[i].options[optIdx].content = e.target.value;
-                                            setEditingContent({...editingContent, data: {...editingContent.data, items: newItems}});
-                                          }}
-                                        />
-                                      </div>
-                                    ))}
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-bold text-zinc-400 uppercase">Đáp án đúng</label>
-                                      <select 
-                                        className="w-full px-4 py-2 bg-white rounded-xl outline-none text-sm border border-zinc-200"
-                                        value={item.correct_answer}
-                                        onChange={(e) => {
-                                          const newItems = [...editingContent.data.items];
-                                          newItems[i].correct_answer = e.target.value;
-                                          setEditingContent({...editingContent, data: {...editingContent.data, items: newItems}});
-                                        }}
-                                      >
-                                        {['A', 'B', 'C', 'D'].map(l => <option key={l} value={l}>{l}</option>)}
-                                      </select>
-                                    </div>
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-bold text-zinc-400 uppercase">Giải thích (tùy chọn)</label>
-                                      <input 
-                                        type="text"
-                                        className="w-full px-4 py-2 bg-white rounded-xl outline-none text-sm border border-zinc-200"
-                                        value={item.explanation || ''}
-                                        onChange={(e) => {
-                                          const newItems = [...editingContent.data.items];
-                                          newItems[i].explanation = e.target.value;
-                                          setEditingContent({...editingContent, data: {...editingContent.data, items: newItems}});
-                                        }}
-                                      />
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                              <button 
-                                onClick={() => {
-                                  const newItems = [...(editingContent.data.items || []), { 
-                                    question: '', 
-                                    options: [{label: 'A', content: ''}, {label: 'B', content: ''}, {label: 'C', content: ''}, {label: 'D', content: ''}], 
-                                    correct_answer: 'A', 
-                                    explanation: '' 
-                                  }];
-                                  setEditingContent({...editingContent, data: {...editingContent.data, items: newItems}});
-                                }}
-                                className="w-full py-2 border-2 border-dashed border-zinc-200 rounded-xl text-zinc-400 text-xs font-bold hover:border-zinc-400 hover:text-zinc-600 transition-all"
-                              >
-                                + Thêm câu hỏi trắc nghiệm
-                              </button>
-                            </div>
-
-                            <div className="flex gap-2">
-                              <button 
-                                onClick={() => updateContent('quiz', q.id, editingContent.data)}
-                                className="flex-1 py-2 bg-zinc-900 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2"
-                              >
-                                <Check size={16} /> Lưu thay đổi
-                              </button>
-                              <button 
-                                onClick={() => setEditingContent(null)}
-                                className="px-4 py-2 bg-zinc-100 text-zinc-600 rounded-xl font-bold text-sm"
-                              >
-                                Hủy
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="font-bold text-zinc-900 mb-2">{q.title}</div>
-                            <div className="space-y-4">
-                              {(q.items || []).map((item, i) => (
-                                <div key={i} className="p-3 bg-zinc-50 rounded-xl border border-zinc-100 text-sm">
-                                  <div className="font-medium mb-2">Câu {i + 1}: {item.question}</div>
-                                  <div className="grid grid-cols-2 gap-2 text-xs text-zinc-500">
-                                    {(item.options || []).map((opt, oIdx) => (
-                                      <div key={oIdx} className={item.correct_answer === opt.label ? 'text-emerald-600 font-bold' : ''}>
-                                        {opt.label}. {opt.content}
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    ))}
-
-                    <div className="bg-white border-2 border-dashed border-zinc-200 rounded-2xl p-6 space-y-6">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-zinc-400 uppercase">Tiêu đề phần trắc nghiệm</label>
-                        <input 
-                          placeholder="Nhập tiêu đề (ví dụ: Trắc nghiệm ôn tập...)" 
-                          className="w-full px-4 py-2 bg-zinc-50 rounded-xl outline-none text-sm"
-                          value={newQuiz.title}
-                          onChange={(e) => setNewQuiz({...newQuiz, title: e.target.value})}
-                        />
-                      </div>
-
-                      <div className="space-y-6">
-                        {newQuiz.items.map((item, i) => (
-                          <div key={i} className="p-4 border border-zinc-100 rounded-2xl bg-zinc-50/50 space-y-4 relative">
-                            {newQuiz.items.length > 1 && (
-                              <button 
-                                onClick={() => {
-                                  const newItems = [...newQuiz.items];
-                                  newItems.splice(i, 1);
-                                  setNewQuiz({...newQuiz, items: newItems});
-                                }}
-                                className="absolute top-2 right-2 text-zinc-300 hover:text-red-500"
-                              >
-                                <X size={14} />
-                              </button>
-                            )}
-                            <div className="space-y-1">
-                              <div className="flex items-center justify-between">
-                                <label className="text-[10px] font-bold text-zinc-400 uppercase">Câu hỏi {i + 1}</label>
-                                <ImageUploader onUpload={(url) => {
-                                  const newItems = [...newQuiz.items];
-                                  newItems[i].question += `\n![image](${url})`;
-                                  setNewQuiz({...newQuiz, items: newItems});
-                                }} />
-                              </div>
-                              <textarea 
-                                placeholder="Nhập câu hỏi..." 
-                                className="w-full px-4 py-2 bg-white rounded-xl outline-none text-sm min-h-[60px] border border-zinc-200"
-                                value={item.question}
-                                onChange={(e) => {
-                                  const newItems = [...newQuiz.items];
-                                  newItems[i].question = e.target.value;
-                                  setNewQuiz({...newQuiz, items: newItems});
-                                }}
-                              />
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              {item.options.map((opt, optIdx) => (
-                                <div key={optIdx} className="space-y-1">
-                                  <label className="text-[10px] font-bold text-zinc-400 uppercase">Lựa chọn {opt.label}</label>
-                                  <input 
-                                    type="text"
-                                    placeholder={`Nội dung lựa chọn ${opt.label}...`}
-                                    className="w-full px-4 py-2 bg-white rounded-xl outline-none text-sm border border-zinc-200"
-                                    value={opt.content}
-                                    onChange={(e) => {
-                                      const newItems = [...newQuiz.items];
-                                      newItems[i].options[optIdx].content = e.target.value;
-                                      setNewQuiz({...newQuiz, items: newItems});
-                                    }}
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-zinc-400 uppercase">Đáp án đúng</label>
-                                <select 
-                                  className="w-full px-4 py-2 bg-white rounded-xl outline-none text-sm border border-zinc-200"
-                                  value={item.correct_answer}
-                                  onChange={(e) => {
-                                    const newItems = [...newQuiz.items];
-                                    newItems[i].correct_answer = e.target.value;
-                                    setNewQuiz({...newQuiz, items: newItems});
-                                  }}
-                                >
-                                  {['A', 'B', 'C', 'D'].map(l => <option key={l} value={l}>{l}</option>)}
-                                </select>
-                              </div>
-                              <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-zinc-400 uppercase">Giải thích (tùy chọn)</label>
-                                <input 
-                                  type="text"
-                                  placeholder="Giải thích tại sao..."
-                                  className="w-full px-4 py-2 bg-white rounded-xl outline-none text-sm border border-zinc-200"
-                                  value={item.explanation}
-                                  onChange={(e) => {
-                                    const newItems = [...newQuiz.items];
-                                    newItems[i].explanation = e.target.value;
-                                    setNewQuiz({...newQuiz, items: newItems});
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                        <button 
-                          onClick={() => setNewQuiz({...newQuiz, items: [...newQuiz.items, { 
-                            question: '', 
-                            options: [{label: 'A', content: ''}, {label: 'B', content: ''}, {label: 'C', content: ''}, {label: 'D', content: ''}], 
-                            correct_answer: 'A', 
-                            explanation: '' 
-                          }]})}
-                          className="w-full py-2 border-2 border-dashed border-zinc-200 rounded-xl text-zinc-400 text-xs font-bold hover:border-zinc-400 hover:text-zinc-600 transition-all"
-                        >
-                          + Thêm câu hỏi trắc nghiệm
-                        </button>
-                      </div>
-
-                      <button 
-                        onClick={() => {
-                          const filteredItems = newQuiz.items.filter(item => item.question.trim() !== '');
-                          if (newQuiz.title && filteredItems.length > 0) {
-                            addContent('quiz', { ...newQuiz, items: filteredItems });
-                            setNewQuiz({
-                              title: '',
-                              items: [{ 
-                                question: '', 
-                                options: [{label: 'A', content: ''}, {label: 'B', content: ''}, {label: 'C', content: ''}, {label: 'D', content: ''}], 
-                                correct_answer: 'A', 
-                                explanation: '' 
-                              }]
-                            });
-                          } else {
-                            alert("Vui lòng nhập tiêu đề và ít nhất một câu hỏi.");
-                          }
-                        }}
-                        className="w-full py-3 bg-zinc-900 text-white rounded-xl font-bold text-sm hover:bg-zinc-800 transition-colors"
-                      >
-                        Lưu phần Trắc nghiệm
-                      </button>
-                    </div>
-                  </div>
-                </section>
+                {lessonTab === "quizzes" && (
+                  <QuizzesSection
+                    lessonData={lessonData}
+                    newQuiz={newQuiz}
+                    setNewQuiz={setNewQuiz}
+                    editingContent={editingContent}
+                    setEditingContent={setEditingContent}
+                    addContent={addContent}
+                    updateContent={updateContent}
+                    deleteContent={deleteContent}
+                  />
+                )}
               </div>
             )}
           </div>
         )}
       </main>
+      �
       <FloatingImageTool />
     </div>
   );
