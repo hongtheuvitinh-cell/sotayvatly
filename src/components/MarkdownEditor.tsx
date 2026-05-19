@@ -20,7 +20,7 @@ import remarkMath from 'remark-math';
 import remarkBreaks from 'remark-breaks';
 import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
-import rehypeRaw from 'rehype-raw';
+import rehypeRaw from "rehype-raw";
 import 'katex/dist/katex.min.css';
 
 export const preprocessMarkdown = (content: string) => {
