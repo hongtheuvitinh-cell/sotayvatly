@@ -1,5 +1,6 @@
 {
   "name": "Sổ tay Công thức",
   "description": "Ứng dụng tra cứu công thức và phương pháp giải toán hiệu quả dành cho học sinh.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
