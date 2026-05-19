@@ -19,10 +19,20 @@ import Markdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import remarkBreaks from 'remark-breaks';
 import rehypeKatex from 'rehype-katex';
+import rehypeRaw from 'rehype-raw';
 import 'katex/dist/katex.min.css';
 import { Chapter, FullLesson } from './types';
 import Admin from './Admin';
 import { QuizDisplay } from './components/QuizDisplay';
+
+import remarkGfm from 'remark-gfm';
+
+const preprocessMarkdown = (content: string) => {
+  if (!content) return '';
+  return content
+    .replace(/(<(div|p|center|header|section|footer)[^>]*>)/gi, '$1\n\n')
+    .replace(/(<\/(div|p|center|header|section|footer)>)/gi, '\n\n$1');
+};
 
 export default function App() {
   const [chapters, setChapters] = useState<Chapter[]>([]);
@@ -35,6 +45,9 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState('Toán học');
   const [selectedGrade, setSelectedGrade] = useState('Lớp 12');
+  const [activeTab, setActiveTab] = useState('formulas');
+  const [selectedExampleId, setSelectedExampleId] = useState<number | null>(null);
+  const [visibleSolutions, setVisibleSolutions] = useState<Set<string>>(new Set());
 
   const subjects = ['Toán học', 'Vật lý', 'Hóa học', 'Sinh học', 'Tiếng Anh'];
   const grades = ['Lớp 10', 'Lớp 11', 'Lớp 12'];
@@ -80,6 +93,15 @@ export default function App() {
           console.log("Fetched lesson data:", data);
           if (data && !data.error) {
             setLessonData(data);
+            // Set default tab based on available content
+            if (data.formulas && data.formulas.length > 0) setActiveTab('formulas');
+            else if (data.examples && data.examples.length > 0) setActiveTab('examples');
+            else if (data.practice && data.practice.length > 0) setActiveTab('practice');
+            else if (data.quizzes && data.quizzes.length > 0) setActiveTab('quizzes');
+
+            if (data.examples && data.examples.length > 0) {
+              setSelectedExampleId(data.examples[0].id);
+            }
           } else {
             console.error("Error in lesson data:", data);
           }
@@ -267,7 +289,7 @@ export default function App() {
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto relative">
         {lessonData ? (
-          <div className="max-w-4xl mx-auto pt-4 px-6 pb-12 lg:pt-6 lg:px-12 lg:pb-20">
+          <div className="max-w-7xl pt-4 px-6 pb-12 lg:pt-6 lg:px-10 lg:pb-20">
             <motion.div
               key={lessonData.id}
               initial={{ opacity: 0, y: 20 }}
@@ -287,218 +309,339 @@ export default function App() {
                 <h2 className="text-4xl font-bold tracking-tight text-zinc-900">
                   {lessonData.title}
                 </h2>
-                <p className="text-lg text-zinc-600 max-w-2xl leading-relaxed">
-                  {lessonData.description}
-                </p>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-zinc-100">
+                  <p className="text-lg text-zinc-600 max-w-2xl leading-relaxed">
+                    {lessonData.description}
+                  </p>
+                </div>
               </header>
 
-              {/* 1. Công thức Section */}
-              {lessonData.formulas.length > 0 && (
-                <section className="space-y-4">
-                  <div className="flex items-center gap-2 text-zinc-900">
-                    <Calculator size={24} />
-                    <h3 className="text-xl font-bold">1. Công thức cần nhớ</h3>
-                  </div>
-                  <div className="grid gap-4">
-                    {(lessonData.formulas || []).map((f) => (
-                      <div key={f.id} className="bg-white border border-zinc-200 rounded-3xl p-6 md:p-8 shadow-sm overflow-x-auto">
-                        <div className="markdown-body prose prose-zinc max-w-none">
-                          <Markdown remarkPlugins={[remarkMath, remarkBreaks]} rehypePlugins={[rehypeKatex]}>
-                            {f.content}
-                          </Markdown>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
+              {/* Tabs Navigation */}
+              <div className="flex items-center gap-1 overflow-x-auto pb-2 scrollbar-hide border-b border-zinc-100 mb-8 sticky top-0 bg-zinc-50 z-10 pt-2">
+                {[
+                  { id: 'formulas', label: 'Công thức', icon: Calculator, count: lessonData.formulas?.length || 0 },
+                  { id: 'examples', label: 'Phân dạng & Ví dụ', icon: Lightbulb, count: lessonData.examples?.length || 0 },
+                  { id: 'practice', label: 'Tự rèn luyện', icon: Dumbbell, count: lessonData.practice?.length || 0 },
+                  { id: 'quizzes', label: 'Trắc nghiệm', icon: GraduationCap, count: lessonData.quizzes?.length || 0 }
+                ].map((tab) => (
+                  tab.count > 0 && (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`flex items-center gap-2 px-5 py-3 rounded-full text-sm font-bold whitespace-nowrap transition-all ${
+                        activeTab === tab.id 
+                          ? 'bg-zinc-900 text-white shadow-lg' 
+                          : 'text-zinc-500 hover:bg-zinc-100'
+                      }`}
+                    >
+                      <tab.icon size={18} />
+                      {tab.label}
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${activeTab === tab.id ? 'bg-white/20' : 'bg-zinc-100'}`}>
+                        {tab.count}
+                      </span>
+                    </button>
+                  )
+                ))}
+              </div>
 
-              {/* 2. Dạng bài & Phương pháp Section */}
-              {lessonData.examples.length > 0 && (
-                <section className="space-y-6">
-                  <div className="flex items-center gap-2 text-zinc-900">
-                    <Lightbulb size={24} />
-                    <h3 className="text-xl font-bold">2. Dạng bài & Phương pháp</h3>
-                  </div>
-                  <div className="grid gap-6">
-                    {(lessonData.examples || []).map((example, idx) => (
-                      <div key={example.id} className="bg-white border border-zinc-200 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
-                        <div className="flex items-center justify-between">
-                          <div className="markdown-body prose prose-zinc max-w-none flex-1">
-                            <Markdown remarkPlugins={[remarkMath, remarkBreaks]} rehypePlugins={[rehypeKatex]}>
-                              {example.title}
+              <div className="min-h-[400px]">
+                {/* 1. Công thức Section */}
+                {activeTab === 'formulas' && lessonData.formulas.length > 0 && (
+                  <motion.section 
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="space-y-4"
+                  >
+                    <div className="flex items-center gap-2 text-zinc-900">
+                      <Calculator size={24} />
+                      <h3 className="text-xl font-bold">Công thức cần nhớ</h3>
+                    </div>
+                    <div className="grid gap-4">
+                      {(lessonData.formulas || []).map((f) => (
+                        <div key={f.id} className="bg-white border border-zinc-200 rounded-3xl p-6 md:p-8 shadow-sm overflow-x-auto">
+                          <div className="markdown-body prose prose-zinc max-w-none">
+                            <Markdown 
+                              remarkPlugins={[remarkMath, remarkBreaks, remarkGfm]} 
+                              rehypePlugins={[rehypeKatex, rehypeRaw]}
+                            >
+                              {preprocessMarkdown(f.content)}
                             </Markdown>
                           </div>
-                          <span className="px-3 py-1 bg-zinc-100 text-zinc-600 text-xs font-bold rounded-full uppercase tracking-wider ml-4 shrink-0">
-                            Dạng {idx + 1}
-                          </span>
                         </div>
-                        <div className="space-y-8">
-                          {(example.items || []).map((item, i) => (
-                            <div key={i} className="space-y-4">
-                              <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100">
-                                <p className="text-sm font-bold text-blue-600/60 uppercase tracking-widest mb-2">Đề bài {(example.items || []).length > 1 ? i + 1 : ''}</p>
-                                <div className="markdown-body prose prose-sm prose-zinc max-w-none">
-                                  <Markdown remarkPlugins={[remarkMath, remarkBreaks]} rehypePlugins={[rehypeKatex]}>{item.problem}</Markdown>
-                                </div>
-                              </div>
-                              <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100">
-                                <p className="text-sm font-bold text-emerald-600/60 uppercase tracking-widest mb-2">Lời giải chi tiết {(example.items || []).length > 1 ? i + 1 : ''}</p>
-                                <div className="markdown-body prose prose-sm prose-emerald max-w-none">
-                                  <Markdown remarkPlugins={[remarkMath, remarkBreaks]} rehypePlugins={[rehypeKatex]}>{item.solution}</Markdown>
-                                </div>
-                              </div>
-                            </div>
+                      ))}
+                    </div>
+                  </motion.section>
+                )}
+
+                {/* 2. Dạng bài & Phương pháp Section */}
+                {activeTab === 'examples' && lessonData.examples.length > 0 && (
+                  <motion.section 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="space-y-8"
+                  >
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-200 pb-4">
+                      <div className="flex items-center gap-2 text-zinc-900">
+                        <Lightbulb size={24} className="text-amber-500" />
+                        <h3 className="text-xl font-black uppercase tracking-tight">Phân dạng & Ví dụ</h3>
+                      </div>
+
+                      {/* Example Type Selector (Listbox/Select style) */}
+                      <div className="relative group">
+                        <select 
+                          value={selectedExampleId || ''}
+                          onChange={(e) => {
+                            setSelectedExampleId(Number(e.target.value));
+                            setVisibleSolutions(new Set());
+                          }}
+                          className="appearance-none bg-white border-2 border-zinc-900 px-4 py-2 pr-10 rounded-2xl text-xs font-bold outline-none cursor-pointer hover:bg-zinc-50 transition-all shadow-sm min-w-[200px]"
+                        >
+                          {(lessonData.examples || []).map((ex, i) => (
+                            <option key={ex.id} value={ex.id}>
+                              Dạng {i + 1}: {ex.name || ex.title.replace(/[#*`]/g, '').slice(0, 30)}
+                            </option>
                           ))}
-                          {(!example.items || example.items.length === 0) && (
-                            <div className="space-y-4">
-                              <div className="p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
-                                <p className="text-sm font-bold text-zinc-400 uppercase tracking-widest mb-2">Đề bài</p>
-                                <div className="markdown-body prose prose-sm prose-zinc max-w-none whitespace-pre-wrap">
-                                  {(example as any).problem}
-                                </div>
-                              </div>
-                              <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100">
-                                <p className="text-sm font-bold text-emerald-600/50 uppercase tracking-widest mb-2">Lời giải chi tiết</p>
-                                <div className="markdown-body prose prose-sm prose-emerald max-w-none whitespace-pre-wrap">
-                                  {(example as any).solution}
-                                </div>
-                              </div>
-                            </div>
-                          )}
+                        </select>
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-400">
+                          <ChevronDown size={16} />
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </section>
-              )}
+                    </div>
 
-              {/* 3. Bài tập tự rèn Section */}
-              {lessonData.practice && lessonData.practice.length > 0 && (
-                <section className="space-y-6">
-                  <div className="flex items-center gap-2 text-zinc-900">
-                    <Dumbbell size={24} />
-                    <h3 className="text-xl font-bold">3. Bài tập tự rèn</h3>
-                  </div>
-                  <div className="grid gap-6">
-                    {(lessonData.practice || []).map((exercise, idx) => (
-                      <div key={exercise.id} className="bg-white border border-zinc-200 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
-                        <div className="flex items-center justify-between">
-                          <div className="markdown-body prose prose-zinc max-w-none flex-1">
-                            <Markdown remarkPlugins={[remarkMath, remarkBreaks]} rehypePlugins={[rehypeKatex]}>
-                              {exercise.title}
-                            </Markdown>
+                    {/* Active Example Content */}
+                    {selectedExampleId && lessonData.examples.find(e => e.id === selectedExampleId) && (
+                      <div className="space-y-8 animate-in fade-in duration-500">
+                        {(() => {
+                          const example = lessonData.examples.find(e => e.id === selectedExampleId)!;
+                          return (
+                            <div className="space-y-8">
+                              {/* Dạng Header Card */}
+                              <div className="bg-zinc-900 text-white rounded-3xl p-6 shadow-xl relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl" />
+                                <div className="relative z-10 flex items-center gap-4">
+                                  <div className="px-3 py-1 bg-amber-500 rounded-full text-[10px] font-black uppercase tracking-widest text-black">
+                                    Dạng {lessonData.examples.indexOf(example) + 1}
+                                  </div>
+                                  <h4 className="text-lg font-bold">
+                                    {example.name || "Phương pháp giải"}
+                                  </h4>
+                                </div>
+                              </div>
+
+                              <div className="bg-white border border-zinc-200 rounded-[32px] p-6 md:p-8 shadow-sm space-y-10">
+                                <div className="space-y-6">
+                                  <div className="flex items-center gap-2 mb-4">
+                                    <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center font-bold text-zinc-900">1</div>
+                                    <h5 className="font-bold text-zinc-900 uppercase text-xs tracking-widest">Phương pháp giải</h5>
+                                  </div>
+                                  <div className="markdown-body prose prose-zinc max-w-none bg-zinc-50/50 p-6 rounded-2xl border border-zinc-100">
+                                    <Markdown 
+                                      remarkPlugins={[remarkMath, remarkBreaks, remarkGfm]} 
+                                      rehypePlugins={[rehypeKatex, rehypeRaw]}
+                                    >
+                                      {preprocessMarkdown(example.title)}
+                                    </Markdown>
+                                  </div>
+                                </div>
+
+                                <div className="space-y-10">
+                                  <div className="flex items-center gap-2 mb-4">
+                                    <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center font-bold text-zinc-900">2</div>
+                                    <h5 className="font-bold text-zinc-900 uppercase text-xs tracking-widest">Các ví dụ minh họa</h5>
+                                  </div>
+                                  {(example.items || []).map((item, i) => {
+                                    const solKey = `${example.id}-${i}`;
+                                    const isVisible = visibleSolutions.has(solKey);
+
+                                    return (
+                                      <div key={i} className="space-y-4">
+                                        <div className="p-6 bg-blue-50/50 rounded-[24px] border border-blue-100 relative">
+                                          <div className="flex items-center justify-between mb-4">
+                                            <p className="text-[10px] font-black text-blue-600/60 uppercase tracking-widest">Đề bài ví dụ {i + 1}</p>
+                                          </div>
+                                          <div className="markdown-body prose prose-sm prose-zinc max-w-none font-medium text-zinc-700">
+                                            <Markdown 
+                                              remarkPlugins={[remarkMath, remarkBreaks, remarkGfm]} 
+                                              rehypePlugins={[rehypeKatex, rehypeRaw]}
+                                            >
+                                              {preprocessMarkdown(item.problem)}
+                                            </Markdown>
+                                          </div>
+                                        </div>
+
+                                        <div className={`rounded-[24px] border-2 transition-all duration-300 ${
+                                          isVisible 
+                                            ? 'bg-emerald-50/50 border-emerald-100' 
+                                            : 'bg-white border-zinc-100 hover:border-zinc-300 border-dashed'
+                                        }`}>
+                                          <button 
+                                            onClick={() => {
+                                              const next = new Set(visibleSolutions);
+                                              if (next.has(solKey)) next.delete(solKey);
+                                              else next.add(solKey);
+                                              setVisibleSolutions(next);
+                                            }}
+                                            className="w-full flex items-center justify-between p-5 text-left"
+                                          >
+                                            <div className="flex items-center gap-3">
+                                              <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${isVisible ? 'bg-emerald-500 text-white' : 'bg-zinc-100 text-zinc-400'}`}>
+                                                <Lightbulb size={16} />
+                                              </div>
+                                              <div>
+                                                <p className={`text-[10px] font-black uppercase tracking-widest ${isVisible ? 'text-emerald-600' : 'text-zinc-500'}`}>
+                                                  {isVisible ? 'Lời giải chi tiết' : 'Xem lời giải ví dụ ' + (i + 1)}
+                                                </p>
+                                              </div>
+                                            </div>
+                                            <ChevronDown size={18} className={`transition-transform duration-300 ${isVisible ? 'rotate-180 text-emerald-500' : 'text-zinc-400'}`} />
+                                          </button>
+                                          
+                                          <AnimatePresence>
+                                            {isVisible && (
+                                              <motion.div
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: 'auto', opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                              >
+                                                <div className="px-6 pb-8 pt-2">
+                                                  <div className="h-px bg-emerald-100/50 mb-6" />
+                                                  <div className="markdown-body prose prose-sm prose-emerald max-w-none font-medium">
+                                                    <Markdown 
+                                                      remarkPlugins={[remarkMath, remarkBreaks, remarkGfm]} 
+                                                      rehypePlugins={[rehypeKatex, rehypeRaw]}
+                                                    >
+                                                      {preprocessMarkdown(item.solution)}
+                                                    </Markdown>
+                                                  </div>
+                                                </div>
+                                              </motion.div>
+                                            )}
+                                          </AnimatePresence>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+                  </motion.section>
+                )}
+
+                {/* 3. Bài tập tự rèn Section */}
+                {activeTab === 'practice' && lessonData.practice && lessonData.practice.length > 0 && (
+                  <motion.section 
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="space-y-6"
+                  >
+                    <div className="flex items-center gap-2 text-zinc-900">
+                      <Dumbbell size={24} />
+                      <h3 className="text-xl font-bold">Bài tập tự rèn luyện</h3>
+                    </div>
+                    <div className="grid gap-6">
+                      {(lessonData.practice || []).map((exercise, idx) => (
+                        <div key={exercise.id} className="bg-white border border-zinc-200 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
+                          <div className="flex items-center justify-between">
+                            <div className="markdown-body prose prose-zinc max-w-none flex-1">
+                              <Markdown 
+                                remarkPlugins={[remarkMath, remarkBreaks, remarkGfm]} 
+                                rehypePlugins={[rehypeKatex, rehypeRaw]}
+                              >
+                                {preprocessMarkdown(exercise.title)}
+                              </Markdown>
+                            </div>
+                            <span className="px-3 py-1 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-full uppercase tracking-wider ml-4 shrink-0">
+                              Tự luyện {idx + 1}
+                            </span>
                           </div>
-                          <span className="px-3 py-1 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-full uppercase tracking-wider ml-4 shrink-0">
-                            Tự luyện {idx + 1}
-                          </span>
-                        </div>
-                        <div className="space-y-8">
-                          {(exercise.items || []).map((item, i) => (
-                            <div key={i} className="space-y-4">
-                              <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100">
-                                <p className="text-sm font-bold text-blue-600/60 uppercase tracking-widest mb-2">Đề bài {(exercise.items || []).length > 1 ? i + 1 : ''}</p>
-                                <div className="markdown-body prose prose-sm prose-zinc max-w-none">
-                                  <Markdown remarkPlugins={[remarkMath, remarkBreaks]} rehypePlugins={[rehypeKatex]}>{item.problem}</Markdown>
+                          <div className="space-y-8">
+                            {(exercise.items || []).map((item, i) => (
+                              <div key={i} className="space-y-4">
+                                <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100">
+                                  <p className="text-sm font-bold text-blue-600/60 uppercase tracking-widest mb-2">Đề bài {(exercise.items || []).length > 1 ? i + 1 : ''}</p>
+                                  <div className="markdown-body prose prose-sm prose-zinc max-w-none">
+                                    <Markdown 
+                                      remarkPlugins={[remarkMath, remarkBreaks, remarkGfm]} 
+                                      rehypePlugins={[rehypeKatex, rehypeRaw]}
+                                    >
+                                      {preprocessMarkdown(item.problem)}
+                                    </Markdown>
+                                  </div>
+                                </div>
+                                <div className="flex flex-wrap gap-4">
+                                  {item.hint && (
+                                    <details className="group flex-1 min-w-[200px]">
+                                      <summary className="cursor-pointer text-sm font-bold text-indigo-600 hover:text-indigo-700 transition-colors list-none flex items-center gap-2">
+                                        <div className="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center group-open:rotate-180 transition-transform">
+                                          <ChevronDown size={14} />
+                                        </div>
+                                        Xem gợi ý {(exercise.items || []).length > 1 ? i + 1 : ''}
+                                      </summary>
+                                      <div className="mt-4 p-4 bg-indigo-50/30 rounded-2xl border border-indigo-100/50 text-sm text-zinc-600 italic">
+                                        <div className="markdown-body prose prose-sm max-w-none">
+                                          <Markdown 
+                                            remarkPlugins={[remarkMath, remarkBreaks, remarkGfm]} 
+                                            rehypePlugins={[rehypeKatex, rehypeRaw]}
+                                          >
+                                            {preprocessMarkdown(item.hint)}
+                                          </Markdown>
+                                        </div>
+                                      </div>
+                                    </details>
+                                  )}
+                                  {item.answer && (
+                                    <details className="group flex-1 min-w-[200px]">
+                                      <summary className="cursor-pointer text-sm font-bold text-emerald-600 hover:text-emerald-700 transition-colors list-none flex items-center gap-2">
+                                        <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center group-open:rotate-180 transition-transform">
+                                          <ChevronDown size={14} />
+                                        </div>
+                                        Xem đáp số {(exercise.items || []).length > 1 ? i + 1 : ''}
+                                      </summary>
+                                      <div className="mt-4 p-4 bg-emerald-50/30 rounded-2xl border border-emerald-100/50 font-mono text-emerald-700 font-bold">
+                                        <div className="markdown-body prose prose-sm max-w-none">
+                                          <Markdown 
+                                            remarkPlugins={[remarkMath, remarkBreaks, remarkGfm]} 
+                                            rehypePlugins={[rehypeKatex, rehypeRaw]}
+                                          >
+                                            {preprocessMarkdown(item.answer)}
+                                          </Markdown>
+                                        </div>
+                                      </div>
+                                    </details>
+                                  )}
                                 </div>
                               </div>
-                              <div className="flex flex-wrap gap-4">
-                                {item.hint && (
-                                  <details className="group flex-1 min-w-[200px]">
-                                    <summary className="cursor-pointer text-sm font-bold text-indigo-600 hover:text-indigo-700 transition-colors list-none flex items-center gap-2">
-                                      <div className="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center group-open:rotate-180 transition-transform">
-                                        <ChevronDown size={14} />
-                                      </div>
-                                      Xem gợi ý {(exercise.items || []).length > 1 ? i + 1 : ''}
-                                    </summary>
-                                    <div className="mt-4 p-4 bg-indigo-50/30 rounded-2xl border border-indigo-100/50 text-sm text-zinc-600 italic">
-                                      <div className="markdown-body prose prose-sm max-w-none">
-                                        <Markdown remarkPlugins={[remarkMath, remarkBreaks]} rehypePlugins={[rehypeKatex]}>{item.hint}</Markdown>
-                                      </div>
-                                    </div>
-                                  </details>
-                                )}
-                                {item.answer && (
-                                  <details className="group flex-1 min-w-[200px]">
-                                    <summary className="cursor-pointer text-sm font-bold text-emerald-600 hover:text-emerald-700 transition-colors list-none flex items-center gap-2">
-                                      <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center group-open:rotate-180 transition-transform">
-                                        <ChevronDown size={14} />
-                                      </div>
-                                      Xem đáp số {(exercise.items || []).length > 1 ? i + 1 : ''}
-                                    </summary>
-                                    <div className="mt-4 p-4 bg-emerald-50/30 rounded-2xl border border-emerald-100/50 font-mono text-emerald-700 font-bold">
-                                      <div className="markdown-body prose prose-sm max-w-none">
-                                        <Markdown remarkPlugins={[remarkMath, remarkBreaks]} rehypePlugins={[rehypeKatex]}>{item.answer}</Markdown>
-                                      </div>
-                                    </div>
-                                  </details>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                          {(!exercise.items || exercise.items.length === 0) && (
-                            <div className="space-y-4">
-                              <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100">
-                                <p className="text-sm font-bold text-blue-600/60 uppercase tracking-widest mb-2">Đề bài</p>
-                                <div className="markdown-body prose prose-sm prose-zinc max-w-none whitespace-pre-wrap">
-                                  {(exercise as any).problem}
-                                </div>
-                              </div>
-                              <div className="flex flex-wrap gap-4">
-                                {(exercise as any).hint && (
-                                  <details className="group flex-1 min-w-[200px]">
-                                    <summary className="cursor-pointer text-sm font-bold text-indigo-600 hover:text-indigo-700 transition-colors list-none flex items-center gap-2">
-                                      <div className="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center group-open:rotate-180 transition-transform">
-                                        <ChevronDown size={14} />
-                                      </div>
-                                      Xem gợi ý
-                                    </summary>
-                                    <div className="mt-4 p-4 bg-indigo-50/30 rounded-2xl border border-indigo-100/50 text-sm text-zinc-600 italic">
-                                      <div className="markdown-body prose prose-sm max-w-none whitespace-pre-wrap">
-                                        {(exercise as any).hint}
-                                      </div>
-                                    </div>
-                                  </details>
-                                )}
-                                {(exercise as any).answer && (
-                                  <details className="group flex-1 min-w-[200px]">
-                                    <summary className="cursor-pointer text-sm font-bold text-emerald-600 hover:text-emerald-700 transition-colors list-none flex items-center gap-2">
-                                      <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center group-open:rotate-180 transition-transform">
-                                        <ChevronDown size={14} />
-                                      </div>
-                                      Xem đáp số
-                                    </summary>
-                                    <div className="mt-4 p-4 bg-emerald-50/30 rounded-2xl border border-emerald-100/50 font-mono text-emerald-700 font-bold">
-                                      <div className="markdown-body prose prose-sm max-w-none whitespace-pre-wrap">
-                                        {(exercise as any).answer}
-                                      </div>
-                                    </div>
-                                  </details>
-                                )}
-                              </div>
-                            </div>
-                          )}
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
+                      ))}
+                    </div>
+                  </motion.section>
+                )}
 
-              {/* 4. Bài tập trắc nghiệm Section */}
-              {lessonData.quizzes && lessonData.quizzes.length > 0 && (
-                <section className="space-y-6">
-                  <div className="flex items-center gap-2 text-zinc-900">
-                    <GraduationCap size={24} />
-                    <h3 className="text-xl font-bold">4. Bài tập trắc nghiệm</h3>
-                  </div>
-                  <div className="grid gap-6">
-                    {lessonData.quizzes.map((quiz) => (
-                      <QuizDisplay key={quiz.id} quiz={quiz} />
-                    ))}
-                  </div>
-                </section>
-              )}
+                {/* 4. Bài tập trắc nghiệm Section */}
+                {activeTab === 'quizzes' && lessonData.quizzes && lessonData.quizzes.length > 0 && (
+                  <motion.section 
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="space-y-6"
+                  >
+                    <div className="flex items-center gap-2 text-zinc-900">
+                      <GraduationCap size={24} />
+                      <h3 className="text-xl font-bold">Bài tập trắc nghiệm</h3>
+                    </div>
+                    <div className="grid gap-6">
+                      {lessonData.quizzes.map((quiz) => (
+                        <QuizDisplay key={quiz.id} quiz={quiz} />
+                      ))}
+                    </div>
+                  </motion.section>
+                )}
+              </div>
             </motion.div>
           </div>
         ) : (
