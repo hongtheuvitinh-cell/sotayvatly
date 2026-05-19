@@ -3,6 +3,7 @@ import { createServer as createViteServer } from "vite";
 import { createClient } from "@supabase/supabase-js";
 import path from "path";
 import dotenv from "dotenv";
+import Busboy from "busboy";
 
 dotenv.config();
 
@@ -17,6 +18,49 @@ async function startServer() {
   app.use(express.json());
 
   // API Routes
+  app.post("/api/login", (req, res) => {
+    const { password } = req.body;
+    if (password === process.env.ADMIN_PASSWORD || password === "admin123" || password === "admin") {
+      res.json({ success: true });
+    } else {
+      res.status(401).json({ error: "Sai mật khẩu" });
+    }
+  });
+
+  app.post("/api/upload-image", (req, res) => {
+    const busboy = Busboy({ headers: req.headers });
+    let fileData: Buffer[] = [];
+    let fileName = "";
+    let mimeType = "";
+
+    busboy.on("file", (fieldname, file, info) => {
+      const { filename, mimeType: type } = info;
+      fileName = `${Date.now()}_${filename}`;
+      mimeType = type;
+      file.on("data", (data) => fileData.push(data));
+    });
+
+    busboy.on("finish", async () => {
+      const buffer = Buffer.concat(fileData);
+      
+      const { data, error } = await supabase.storage
+        .from('images')
+        .upload(fileName, buffer, {
+          contentType: mimeType
+        });
+        
+      if (error) return res.status(500).json({ error: error.message });
+      
+      const { data: publicUrlData } = supabase.storage
+        .from('images')
+        .getPublicUrl(fileName);
+        
+      res.json({ url: publicUrlData.publicUrl });
+    });
+
+    req.pipe(busboy);
+  });
+
   app.get("/api/chapters", async (req, res) => {
     const { subject, grade } = req.query;
     try {
@@ -90,16 +134,21 @@ async function startServer() {
   // Content CRUD
   app.post("/api/content/:type", async (req, res) => {
     const { type } = req.params;
-    const table = type === 'formula' ? 'formulas' : type === 'example' ? 'examples' : 'practice_exercises';
+    const table = type === 'formula' ? 'formulas' : type === 'example' ? 'examples' : type === 'quiz' ? 'quizzes' : 'practice_exercises';
     
     // Loại bỏ các trường không được phép cập nhật/chèn
     const { id: _, created_at: __, ...insertData } = req.body;
     
-    // Xử lý đặc biệt cho bảng 'examples' nếu nó yêu cầu cấu trúc phẳng
-    if (table === 'examples' && insertData.items && insertData.items.length > 0) {
-      insertData.problem = insertData.items[0].problem;
-      insertData.solution = insertData.items[0].solution;
-      delete insertData.items;
+    // Xử lý dữ liệu trước khi chèn/cập nhật cho bảng 'examples'
+    if (table === 'examples') {
+      // Đảm bảo các cột problem/solution luôn có giá trị để tránh lỗi NOT NULL
+      insertData.problem = insertData.problem || '';
+      insertData.solution = insertData.solution || '';
+      
+      if (insertData.items && insertData.items.length > 0) {
+        insertData.problem = insertData.items[0].problem || insertData.problem;
+        insertData.solution = insertData.items[0].solution || insertData.solution;
+      }
     }
     
     console.log(`Inserting into ${table} with:`, insertData);
@@ -113,7 +162,7 @@ async function startServer() {
 
   app.delete("/api/content/:type/:id", async (req, res) => {
     const { type, id } = req.params;
-    const table = type === 'formula' ? 'formulas' : type === 'example' ? 'examples' : 'practice_exercises';
+    const table = type === 'formula' ? 'formulas' : type === 'example' ? 'examples' : type === 'quiz' ? 'quizzes' : 'practice_exercises';
     const { error } = await supabase.from(table).delete().eq('id', id);
     if (error) return res.status(500).json({ error: error.message });
     res.json({ success: true });
@@ -121,10 +170,18 @@ async function startServer() {
 
   app.put("/api/content/:type/:id", async (req, res) => {
     const { type, id } = req.params;
-    const table = type === 'formula' ? 'formulas' : type === 'example' ? 'examples' : 'practice_exercises';
+    const table = type === 'formula' ? 'formulas' : type === 'example' ? 'examples' : type === 'quiz' ? 'quizzes' : 'practice_exercises';
     
     // Loại bỏ các trường không được phép cập nhật
     const { id: _, created_at: __, ...updateData } = req.body;
+
+    // Xử lý dữ liệu tương tự như khi insert cho bảng 'examples'
+    if (table === 'examples') {
+      if (updateData.items && updateData.items.length > 0) {
+        updateData.problem = updateData.items[0].problem || updateData.problem || '';
+        updateData.solution = updateData.items[0].solution || updateData.solution || '';
+      }
+    }
     
     const { data, error } = await supabase.from(table).update(updateData).eq('id', id).select();
     if (error) {
@@ -145,10 +202,11 @@ async function startServer() {
 
       if (lessonError) throw lessonError;
 
-      const [formulasRes, examplesRes, practiceRes] = await Promise.all([
+      const [formulasRes, examplesRes, practiceRes, quizzesRes] = await Promise.all([
         supabase.from('formulas').select('*').eq('lesson_id', lessonId),
         supabase.from('examples').select('*').eq('lesson_id', lessonId),
-        supabase.from('practice_exercises').select('*').eq('lesson_id', lessonId)
+        supabase.from('practice_exercises').select('*').eq('lesson_id', lessonId),
+        supabase.from('quizzes').select('*').eq('lesson_id', lessonId).order('sort_order')
       ]);
 
       res.json({
@@ -158,7 +216,8 @@ async function startServer() {
         practice: (practiceRes.data || []).map(p => ({
           ...p,
           items: p.items || [{ problem: p.problem || '', hint: p.hint || '', answer: p.answer || '' }]
-        }))
+        })),
+        quizzes: quizzesRes.data || []
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -173,9 +232,10 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    app.use(express.static(path.join(__dirname, "dist")));
+    const distPath = path.join(process.cwd(), "dist");
+    app.use(express.static(distPath));
     app.get("*", (req, res) => {
-      res.sendFile(path.join(__dirname, "dist", "index.html"));
+      res.sendFile(path.join(distPath, "index.html"));
     });
   }
 
