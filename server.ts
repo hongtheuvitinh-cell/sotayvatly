@@ -20,7 +20,8 @@ async function startServer() {
   // API Routes
   app.post("/api/login", (req, res) => {
     const { password } = req.body;
-    if (password === process.env.ADMIN_PASSWORD || password === "admin123" || password === "admin") {
+    const adminPassword = process.env.ADMIN_PASSWORD || "admin123";
+    if (password === adminPassword) {
       res.json({ success: true });
     } else {
       res.status(401).json({ error: "Sai mật khẩu" });
