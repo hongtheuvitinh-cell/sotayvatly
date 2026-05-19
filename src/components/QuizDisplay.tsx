@@ -6,7 +6,6 @@ import remarkMath from 'remark-math';
 import remarkBreaks from 'remark-breaks';
 import rehypeKatex from 'rehype-katex';
 import rehypeRaw from "rehype-raw";
-import 'katex/dist/katex.min.css';
 
 import remarkGfm from 'remark-gfm';
 
