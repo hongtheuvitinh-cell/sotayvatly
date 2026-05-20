@@ -58,7 +58,7 @@ export function QuizDisplay({ quiz }: QuizDisplayProps) {
                 <span className="flex-shrink-0 w-8 h-8 bg-slate-100 text-slate-600 rounded-full flex items-center justify-center font-bold text-sm">
                   {qIdx + 1}
                 </span>
-                <div className="text-lg text-slate-800 pt-0.5 prose prose-slate max-w-none">
+                <div className="text-lg font-semibold text-slate-900 pt-0.5 prose prose-slate max-w-none">
                   <Markdown 
                     remarkPlugins={[remarkMath, remarkBreaks, remarkGfm]} 
                     rehypePlugins={[rehypeKatex, rehypeRaw]}
@@ -131,7 +131,7 @@ export function QuizDisplay({ quiz }: QuizDisplayProps) {
                   </button>
                   
                   {showExplanations[qIdx] && (
-                    <div className="mt-3 p-4 bg-indigo-50/50 rounded-xl border border-indigo-100 prose prose-indigo max-w-none animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="mt-3 p-4 bg-indigo-50/50 rounded-xl border border-indigo-100 prose prose-indigo max-w-none font-light text-indigo-700/80 animate-in fade-in slide-in-from-top-2 duration-300">
                       <Markdown 
                         remarkPlugins={[remarkMath, remarkBreaks, remarkGfm]} 
                         rehypePlugins={[rehypeKatex, rehypeRaw]}
