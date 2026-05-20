@@ -61,7 +61,9 @@ export default function Admin({ onBack }: AdminProps) {
   const [selectedExampleId, setSelectedExampleId] = useState<number | null>(
     null,
   );
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return sessionStorage.getItem("admin_auth") === "true";
+  });
   const [password, setPassword] = useState("");
 
   // Form states
@@ -370,8 +372,12 @@ export default function Admin({ onBack }: AdminProps) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password }),
     });
-    if (res.ok) setIsAuthenticated(true);
-    else alert("Sai mật khẩu!");
+    if (res.ok) {
+      setIsAuthenticated(true);
+      sessionStorage.setItem("admin_auth", "true");
+    } else {
+      alert("Sai mật khẩu!");
+    }
   };
 
   if (!isAuthenticated) {
