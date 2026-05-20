@@ -458,7 +458,7 @@ export default function App() {
                                           <div className="flex items-center justify-between mb-4">
                                             <p className="text-[10px] font-black text-blue-600/60 uppercase tracking-widest">Đề bài ví dụ {i + 1}</p>
                                           </div>
-                                          <div className="markdown-body prose prose-sm prose-zinc max-w-none font-medium text-zinc-700">
+                                          <div className="markdown-body prose prose-sm prose-zinc max-w-none font-semibold text-zinc-800">
                                             <Markdown 
                                               remarkPlugins={[remarkMath, remarkBreaks, remarkGfm]} 
                                               rehypePlugins={[rehypeKatex, rehypeRaw]}
@@ -504,7 +504,7 @@ export default function App() {
                                               >
                                                 <div className="px-6 pb-8 pt-2">
                                                   <div className="h-px bg-emerald-100/50 mb-6" />
-                                                  <div className="markdown-body prose prose-sm prose-emerald max-w-none font-medium">
+                                                  <div className="markdown-body prose prose-sm prose-zinc max-w-none font-light text-zinc-600">
                                                     <Markdown 
                                                       remarkPlugins={[remarkMath, remarkBreaks, remarkGfm]} 
                                                       rehypePlugins={[rehypeKatex, rehypeRaw]}
@@ -562,7 +562,7 @@ export default function App() {
                               <div key={i} className="space-y-4">
                                 <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100">
                                   <p className="text-sm font-bold text-blue-600/60 uppercase tracking-widest mb-2">Đề bài {(exercise.items || []).length > 1 ? i + 1 : ''}</p>
-                                  <div className="markdown-body prose prose-sm prose-zinc max-w-none">
+                                  <div className="markdown-body prose prose-sm prose-zinc max-w-none font-semibold text-zinc-800">
                                     <Markdown 
                                       remarkPlugins={[remarkMath, remarkBreaks, remarkGfm]} 
                                       rehypePlugins={[rehypeKatex, rehypeRaw]}
@@ -581,7 +581,7 @@ export default function App() {
                                         Xem gợi ý {(exercise.items || []).length > 1 ? i + 1 : ''}
                                       </summary>
                                       <div className="mt-4 p-4 bg-indigo-50/30 rounded-2xl border border-indigo-100/50 text-sm text-zinc-600 italic">
-                                        <div className="markdown-body prose prose-sm max-w-none">
+                                        <div className="markdown-body prose prose-sm max-w-none font-light text-zinc-500">
                                           <Markdown 
                                             remarkPlugins={[remarkMath, remarkBreaks, remarkGfm]} 
                                             rehypePlugins={[rehypeKatex, rehypeRaw]}
@@ -601,7 +601,7 @@ export default function App() {
                                         Xem đáp số {(exercise.items || []).length > 1 ? i + 1 : ''}
                                       </summary>
                                       <div className="mt-4 p-4 bg-emerald-50/30 rounded-2xl border border-emerald-100/50 font-mono text-emerald-700 font-bold">
-                                        <div className="markdown-body prose prose-sm max-w-none">
+                                        <div className="markdown-body prose prose-sm max-w-none font-light text-emerald-700/70">
                                           <Markdown 
                                             remarkPlugins={[remarkMath, remarkBreaks, remarkGfm]} 
                                             rehypePlugins={[rehypeKatex, rehypeRaw]}
