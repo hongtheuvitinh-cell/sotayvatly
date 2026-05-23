@@ -23,6 +23,7 @@ import rehypeRaw from "rehype-raw";
 import { Chapter, FullLesson } from './types';
 import Admin from './Admin';
 import { QuizDisplay } from './components/QuizDisplay';
+import { GalleryViewer } from './components/GalleryViewer';
 
 import remarkGfm from "remark-gfm";
 
@@ -45,11 +46,33 @@ export default function App() {
   const [selectedSubject, setSelectedSubject] = useState('Toán học');
   const [selectedGrade, setSelectedGrade] = useState('Lớp 12');
   const [activeTab, setActiveTab] = useState('formulas');
+  const [isGalleryView, setIsGalleryView] = useState(false);
   const [selectedExampleId, setSelectedExampleId] = useState<number | null>(null);
   const [visibleSolutions, setVisibleSolutions] = useState<Set<string>>(new Set());
 
   const subjects = ['Toán học', 'Vật lý', 'Hóa học', 'Sinh học', 'Tiếng Anh'];
   const grades = ['Lớp 10', 'Lớp 11', 'Lớp 12'];
+
+  // Detect image-only content for gallery mode
+  const imageUrls = useMemo(() => {
+    if (!lessonData || activeTab !== 'formulas') return [];
+    return (lessonData.formulas || [])
+      .map(f => {
+        const match = f.content.match(/!\[.*?\]\((.*?)\)/);
+        // Also check for raw URLs that might be images
+        if (match) return match[1];
+        if (f.content.trim().match(/^https?:\/\/.*?\.(png|jpg|jpeg|gif|webp)(\?.*)?$/i)) {
+          return f.content.trim();
+        }
+        return null;
+      })
+      .filter(Boolean) as string[];
+  }, [lessonData, activeTab]);
+
+  useEffect(() => {
+    // Reset gallery view when changing lesson or tab
+    setIsGalleryView(false);
+  }, [selectedLessonId, activeTab]);
 
   // Fetch chapters on mount
   useEffect(() => {
@@ -349,26 +372,52 @@ export default function App() {
                   <motion.section 
                     initial={{ opacity: 0, x: 10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="space-y-4"
+                    className="space-y-6"
                   >
-                    <div className="flex items-center gap-2 text-zinc-900">
-                      <Calculator size={24} />
-                      <h3 className="text-xl font-bold">Công thức cần nhớ</h3>
-                    </div>
-                    <div className="grid gap-4">
-                      {(lessonData.formulas || []).map((f) => (
-                        <div key={f.id} className="bg-white border border-zinc-200 rounded-3xl p-6 md:p-8 shadow-sm overflow-x-auto">
-                          <div className="markdown-body prose prose-zinc max-w-none">
-                            <Markdown 
-                              remarkPlugins={[remarkMath, remarkBreaks, remarkGfm]} 
-                              rehypePlugins={[rehypeKatex, rehypeRaw]}
-                            >
-                              {preprocessMarkdown(f.content)}
-                            </Markdown>
-                          </div>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-100 pb-4">
+                      <div className="flex items-center gap-2 text-zinc-900">
+                        <Calculator size={24} />
+                        <h3 className="text-xl font-bold uppercase tracking-tight">Tóm tắt bài học</h3>
+                      </div>
+                      
+                      {imageUrls.length > 1 && (
+                        <div className="flex bg-zinc-100 p-1 rounded-2xl self-start">
+                          <button
+                            onClick={() => setIsGalleryView(false)}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${!isGalleryView ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-500 hover:text-zinc-700'}`}
+                          >
+                            Dạng danh sách
+                          </button>
+                          <button
+                            onClick={() => setIsGalleryView(true)}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${isGalleryView ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-500 hover:text-zinc-700'}`}
+                          >
+                            Duyệt ảnh ({imageUrls.length})
+                          </button>
                         </div>
-                      ))}
+                      )}
                     </div>
+
+                    {isGalleryView && imageUrls.length > 1 ? (
+                      <div className="animate-in fade-in zoom-in-95 duration-500">
+                        <GalleryViewer images={imageUrls} title={lessonData.title} />
+                      </div>
+                    ) : (
+                      <div className="grid gap-4 animate-in fade-in duration-500">
+                        {(lessonData.formulas || []).map((f) => (
+                          <div key={f.id} className="bg-white border border-zinc-200 rounded-[32px] p-6 md:p-10 shadow-sm overflow-x-auto hover:shadow-md transition-shadow">
+                            <div className="markdown-body prose prose-zinc max-w-none">
+                              <Markdown 
+                                remarkPlugins={[remarkMath, remarkBreaks, remarkGfm]} 
+                                rehypePlugins={[rehypeKatex, rehypeRaw]}
+                              >
+                                {preprocessMarkdown(f.content)}
+                              </Markdown>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </motion.section>
                 )}
 
