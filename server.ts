@@ -204,9 +204,9 @@ async function startServer() {
       if (lessonError) throw lessonError;
 
       const [formulasRes, examplesRes, practiceRes, quizzesRes] = await Promise.all([
-        supabase.from('formulas').select('*').eq('lesson_id', lessonId),
-        supabase.from('examples').select('*').eq('lesson_id', lessonId),
-        supabase.from('practice_exercises').select('*').eq('lesson_id', lessonId),
+        supabase.from('formulas').select('*').eq('lesson_id', lessonId).order('id', { ascending: true }),
+        supabase.from('examples').select('*').eq('lesson_id', lessonId).order('id', { ascending: true }),
+        supabase.from('practice_exercises').select('*').eq('lesson_id', lessonId).order('id', { ascending: true }),
         supabase.from('quizzes').select('*').eq('lesson_id', lessonId).order('sort_order')
       ]);
 
