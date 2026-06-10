@@ -152,7 +152,7 @@ export function QuizzesSection({
       <div className="space-y-4 pt-4 border-t border-zinc-100">
         <h4 className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Danh sách bài Trắc nghiệm</h4>
         <div className="space-y-4">
-          {(lessonData?.quizzes || []).map(q => (
+          {[...(lessonData?.quizzes || [])].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || a.id - b.id).map(q => (
             <div key={q.id} className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm group">
               {editingContent?.type === 'quiz' && editingContent?.id === q.id ? (
                 <div className="space-y-6">
