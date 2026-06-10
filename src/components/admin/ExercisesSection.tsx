@@ -121,7 +121,7 @@ export function ExercisesSection({
         <div className="space-y-4 pt-4 border-t border-zinc-100">
           <h4 className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Danh sách bài tập tự luyện</h4>
           <div className="space-y-4">
-            {(lessonData?.practices || []).map(ex => (
+            {[...(lessonData?.practice || [])].sort((a, b) => a.id - b.id).map(ex => (
               <div key={ex.id} className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm group">
                 {editingContent?.type === 'practice' && editingContent?.id === ex.id ? (
                   <div className="space-y-6">
