@@ -4,7 +4,7 @@ import remarkMath from 'remark-math';
 import remarkBreaks from 'remark-breaks';
 import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
-import rehypeRaw from 'rehype-raw';
+import rehypeRaw from "rehype-raw";
 import { FullLesson } from '../../types';
 import { MarkdownEditor, preprocessMarkdown } from '../MarkdownEditor';
 
@@ -63,7 +63,7 @@ export function FormulasSection({
 
       <div className="space-y-4 pt-4 border-t border-zinc-100">
         <h4 className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em]">Danh sách công thức hiện có</h4>
-        {(lessonData?.formulas || []).map(f => (
+        {[...(lessonData?.formulas || [])].sort((a, b) => a.id - b.id).map(f => (
           <div key={f.id} className="bg-white border border-zinc-200 rounded-2xl p-4 flex flex-col gap-4 shadow-sm hover:shadow-md transition-shadow group">
             {editingContent?.type === 'formula' && editingContent?.id === f.id ? (
               <div className="space-y-3">
