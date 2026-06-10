@@ -31,6 +31,8 @@ export function ExamplesSection({
   updateContent,
   deleteContent
 }: ExamplesSectionProps) {
+  const sortedExamples = [...(lessonData?.examples || [])].sort((a, b) => a.id - b.id);
+
   return (
     <section className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -48,8 +50,8 @@ export function ExamplesSection({
           <button 
             onClick={() => {
               setExampleSubTab('items');
-              if (!selectedExampleId && (lessonData?.examples || []).length > 0) {
-                setSelectedExampleId(lessonData!.examples[0].id);
+              if (!selectedExampleId && sortedExamples.length > 0) {
+                setSelectedExampleId(sortedExamples[0].id);
               }
             }}
             className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${exampleSubTab === 'items' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}
@@ -137,7 +139,7 @@ export function ExamplesSection({
           <div className="space-y-4 pt-4 border-t border-zinc-100">
             <h4 className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Danh sách các dạng (Nhấn sửa để cập nhật lên màn hình soạn thảo)</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {(lessonData?.examples || []).map((ex, idx) => (
+              {sortedExamples.map((ex, idx) => (
                 <div key={ex.id} className="bg-white border border-zinc-200 rounded-2xl p-4 flex items-center justify-between group hover:border-zinc-900 transition-colors shadow-sm">
                   <div className="flex items-center gap-3">
                     <span className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center text-xs font-bold text-zinc-600">
@@ -178,7 +180,7 @@ export function ExamplesSection({
             <div className="space-y-4">
               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Chọn dạng bài</label>
               <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2 scrollbar-hide">
-                {(lessonData?.examples || []).map((ex) => (
+                {sortedExamples.map((ex) => (
                   <button
                     key={ex.id}
                     onClick={() => {
@@ -191,7 +193,7 @@ export function ExamplesSection({
                         : 'bg-white border-zinc-200 text-zinc-600 hover:border-zinc-400'
                     }`}
                   >
-                    <div className="text-xs font-bold mb-1 opacity-60">Dạng {lessonData?.examples.indexOf(ex)! + 1}</div>
+                    <div className="text-xs font-bold mb-1 opacity-60">Dạng {sortedExamples.indexOf(ex) + 1}</div>
                     <div className="text-sm font-bold truncate">{ex.name || ex.title.replace(/[#*`]/g, '')}</div>
                   </button>
                 ))}
