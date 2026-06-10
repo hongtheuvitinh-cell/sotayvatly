@@ -12,7 +12,9 @@ import {
   Dumbbell,
   Settings,
   Folder,
-  ChevronRight as ChevronRightIcon
+  ChevronRight as ChevronRightIcon,
+  Link,
+  Check
 } from 'lucide-react';
 
 import Markdown from "react-markdown";
@@ -36,27 +38,62 @@ const preprocessMarkdown = (content: string) => {
 
 export default function App() {
   const [chapters, setChapters] = useState<Chapter[]>([]);
-  const [selectedLessonId, setSelectedLessonId] = useState<number | null>(null);
+  
+  // Initialize states from URL Search Parameters
+  const [selectedSubject, setSelectedSubject] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('subject') || 'Toán học';
+  });
+  const [selectedGrade, setSelectedGrade] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('grade') || 'Lớp 12';
+  });
+  const [selectedLessonId, setSelectedLessonId] = useState<number | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const lessonIdStr = params.get('lesson');
+    return lessonIdStr ? parseInt(lessonIdStr, 10) : null;
+  });
+  const [hasInitializedLesson, setHasInitializedLesson] = useState(false);
+
   const [lessonData, setLessonData] = useState<FullLesson | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedChapters, setExpandedChapters] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [selectedSubject, setSelectedSubject] = useState('Toán học');
-  const [selectedGrade, setSelectedGrade] = useState('Lớp 12');
+  const [isAdmin, setIsAdmin] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return window.location.pathname.startsWith('/admin') || params.get('admin') === 'true';
+  });
   const [activeTab, setActiveTab] = useState('formulas');
   const [isGalleryView, setIsGalleryView] = useState(false);
   const [selectedExampleId, setSelectedExampleId] = useState<number | null>(null);
   const [visibleSolutions, setVisibleSolutions] = useState<Set<string>>(new Set());
+  const [copied, setCopied] = useState(false);
 
   const subjects = ['Toán học', 'Vật lý', 'Hóa học', 'Sinh học', 'Tiếng Anh'];
   const grades = ['Lớp 10', 'Lớp 11', 'Lớp 12'];
 
-  // Detect image-only content for gallery mode
+  // Memoized sorted arrays to absolutely guarantee stable sorting on the client side
+  const sortedFormulas = useMemo(() => {
+    return [...(lessonData?.formulas || [])].sort((a, b) => a.id - b.id);
+  }, [lessonData?.formulas]);
+
+  const sortedExamples = useMemo(() => {
+    return [...(lessonData?.examples || [])].sort((a, b) => a.id - b.id);
+  }, [lessonData?.examples]);
+
+  const sortedPractice = useMemo(() => {
+    return [...(lessonData?.practice || [])].sort((a, b) => a.id - b.id);
+  }, [lessonData?.practice]);
+
+  const sortedQuizzes = useMemo(() => {
+    return [...(lessonData?.quizzes || [])].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+  }, [lessonData?.quizzes]);
+
+  // Detect image-only content for gallery mode using stable sorted formulas
   const imageUrls = useMemo(() => {
     if (!lessonData || activeTab !== 'formulas') return [];
-    return (lessonData.formulas || [])
+    return sortedFormulas
       .map(f => {
         const match = f.content.match(/!\[.*?\]\((.*?)\)/);
         // Also check for raw URLs that might be images
@@ -67,14 +104,29 @@ export default function App() {
         return null;
       })
       .filter(Boolean) as string[];
-  }, [lessonData, activeTab]);
+  }, [lessonData, activeTab, sortedFormulas]);
 
   useEffect(() => {
     // Reset gallery view when changing lesson or tab
     setIsGalleryView(false);
   }, [selectedLessonId, activeTab]);
 
-  // Fetch chapters on mount
+  // Synchronize URL search params when selection changes or admin toggle changes
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    params.set('subject', selectedSubject);
+    params.set('grade', selectedGrade);
+    if (selectedLessonId) {
+      params.set('lesson', selectedLessonId.toString());
+    } else {
+      params.delete('lesson');
+    }
+    const pathname = isAdmin ? '/admin' : '/';
+    const newUrl = `${pathname}?${params.toString()}`;
+    window.history.replaceState({ path: newUrl }, '', newUrl);
+  }, [selectedSubject, selectedGrade, selectedLessonId, isAdmin]);
+
+  // Fetch chapters on mount / selector change
   useEffect(() => {
     fetchChapters();
   }, [selectedSubject, selectedGrade]);
@@ -90,9 +142,27 @@ export default function App() {
       .then(data => {
         if (Array.isArray(data)) {
           setChapters(data);
-          // Do not automatically expand or select on load
-          setSelectedLessonId(null);
-          setLessonData(null);
+          
+          if (!hasInitializedLesson) {
+            setHasInitializedLesson(true);
+            const paramsUrl = new URLSearchParams(window.location.search);
+            const initialLessonId = paramsUrl.get('lesson');
+            if (initialLessonId) {
+              const lessonIdNum = parseInt(initialLessonId, 10);
+              setSelectedLessonId(lessonIdNum);
+              // Auto-expand the chapter containing the preset lesson
+              const chapterWithLesson = data.find(c => (c.lessons || []).some((l: any) => l.id === lessonIdNum));
+              if (chapterWithLesson) {
+                setExpandedChapters(new Set([chapterWithLesson.id]));
+              }
+            } else {
+              setSelectedLessonId(null);
+              setLessonData(null);
+            }
+          } else {
+            setSelectedLessonId(null);
+            setLessonData(null);
+          }
         } else {
           console.error("Data is not an array:", data);
           setChapters([]);
@@ -122,7 +192,8 @@ export default function App() {
             else if (data.quizzes && data.quizzes.length > 0) setActiveTab('quizzes');
 
             if (data.examples && data.examples.length > 0) {
-              setSelectedExampleId(data.examples[0].id);
+              const sortedEx = [...data.examples].sort((a, b) => a.id - b.id);
+              setSelectedExampleId(sortedEx[0].id);
             }
           } else {
             console.error("Error in lesson data:", data);
@@ -131,6 +202,23 @@ export default function App() {
         .catch(err => console.error("Error fetching lesson:", err));
     }
   }, [selectedLessonId]);
+
+  const handleCopyLink = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('subject', selectedSubject);
+    url.searchParams.set('grade', selectedGrade);
+    if (selectedLessonId) {
+      url.searchParams.set('lesson', selectedLessonId.toString());
+    }
+    navigator.clipboard.writeText(url.toString())
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      })
+      .catch((err) => {
+        console.error('Failed to copy link: ', err);
+      });
+  };
 
   const toggleChapter = (chapterId: number) => {
     const newExpanded = new Set(expandedChapters);
@@ -317,7 +405,6 @@ export default function App() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
-              className="space-y-8"
             >
               {/* Header */}
               <header className="space-y-4">
@@ -328,9 +415,27 @@ export default function App() {
                   <ChevronRight size={14} />
                   <span>{(chapters || []).find(c => (c.lessons || []).some(l => l.id === lessonData.id))?.title}</span>
                 </div>
-                <h2 className="text-4xl font-bold tracking-tight text-zinc-900">
-                  {lessonData.title}
-                </h2>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <h2 className="text-4xl font-bold tracking-tight text-zinc-900">
+                    {lessonData.title}
+                  </h2>
+                  <button 
+                    onClick={handleCopyLink}
+                    className="flex self-start md:self-center items-center gap-2 px-4 py-2 bg-white border border-zinc-200 hover:border-zinc-300 text-zinc-700 hover:text-zinc-900 rounded-2xl text-xs font-bold transition-all shadow-sm active:scale-[0.98] cursor-pointer"
+                  >
+                    {copied ? (
+                      <>
+                        <Check size={14} className="text-emerald-600" />
+                        <span className="text-emerald-600 font-bold">Đã sao chép liên kết!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Link size={14} className="text-zinc-500" />
+                        <span>Sao chép link chia sẻ</span>
+                      </>
+                    )}
+                  </button>
+                </div>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-zinc-100">
                   <p className="text-lg text-zinc-600 max-w-2xl leading-relaxed">
                     {lessonData.description}
@@ -341,20 +446,20 @@ export default function App() {
               {/* Tabs Navigation */}
               <div className="flex items-center gap-1 overflow-x-auto pb-2 scrollbar-hide border-b border-zinc-100 mb-8 sticky top-0 bg-zinc-50 z-10 pt-2">
                 {[
-                  { id: 'formulas', label: 'Công thức', icon: Calculator, count: lessonData.formulas?.length || 0 },
-                  { id: 'examples', label: 'Phân dạng & Ví dụ', icon: Lightbulb, count: lessonData.examples?.length || 0 },
-                  { id: 'practice', label: 'Tự rèn luyện', icon: Dumbbell, count: lessonData.practice?.length || 0 },
-                  { id: 'quizzes', label: 'Trắc nghiệm', icon: GraduationCap, count: lessonData.quizzes?.length || 0 }
+                  { id: 'formulas', label: 'Công thức', icon: Calculator, count: sortedFormulas.length },
+                  { id: 'examples', label: 'Phân dạng & Ví dụ', icon: Lightbulb, count: sortedExamples.length },
+                  { id: 'practice', label: 'Tự rèn luyện', icon: Dumbbell, count: sortedPractice.length },
+                  { id: 'quizzes', label: 'Trắc nghiệm', icon: GraduationCap, count: sortedQuizzes.length }
                 ].map((tab) => (
                   tab.count > 0 && (
                     <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`flex items-center gap-2 px-5 py-3 rounded-full text-sm font-bold whitespace-nowrap transition-all ${
-                        activeTab === tab.id 
-                          ? 'bg-zinc-900 text-white shadow-lg' 
-                          : 'text-zinc-500 hover:bg-zinc-100'
-                      }`}
+                       key={tab.id}
+                       onClick={() => setActiveTab(tab.id)}
+                       className={`flex items-center gap-2 px-5 py-3 rounded-full text-sm font-bold whitespace-nowrap transition-all ${
+                         activeTab === tab.id 
+                           ? 'bg-zinc-900 text-white shadow-lg' 
+                           : 'text-zinc-500 hover:bg-zinc-100'
+                       }`}
                     >
                       <tab.icon size={18} />
                       {tab.label}
@@ -368,7 +473,7 @@ export default function App() {
 
               <div className="min-h-[400px]">
                 {/* 1. Công thức Section */}
-                {activeTab === 'formulas' && lessonData.formulas.length > 0 && (
+                {activeTab === 'formulas' && sortedFormulas.length > 0 && (
                   <motion.section 
                     initial={{ opacity: 0, x: 10 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -404,7 +509,7 @@ export default function App() {
                       </div>
                     ) : (
                       <div className="grid gap-4 animate-in fade-in duration-500">
-                        {(lessonData.formulas || []).map((f) => (
+                        {sortedFormulas.map((f) => (
                           <div key={f.id} className="bg-white border border-zinc-200 rounded-[32px] p-6 md:p-10 shadow-sm overflow-x-auto hover:shadow-md transition-shadow">
                             <div className="markdown-body prose prose-zinc max-w-none">
                               <Markdown 
@@ -422,7 +527,7 @@ export default function App() {
                 )}
 
                 {/* 2. Dạng bài & Phương pháp Section */}
-                {activeTab === 'examples' && lessonData.examples.length > 0 && (
+                {activeTab === 'examples' && sortedExamples.length > 0 && (
                   <motion.section 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -444,7 +549,7 @@ export default function App() {
                           }}
                           className="appearance-none bg-white border-2 border-zinc-900 px-4 py-2 pr-10 rounded-2xl text-xs font-bold outline-none cursor-pointer hover:bg-zinc-50 transition-all shadow-sm min-w-[200px]"
                         >
-                          {(lessonData.examples || []).map((ex, i) => (
+                          {sortedExamples.map((ex, i) => (
                             <option key={ex.id} value={ex.id}>
                               Dạng {i + 1}: {ex.name || ex.title.replace(/[#*`]/g, '').slice(0, 30)}
                             </option>
@@ -457,10 +562,10 @@ export default function App() {
                     </div>
 
                     {/* Active Example Content */}
-                    {selectedExampleId && lessonData.examples.find(e => e.id === selectedExampleId) && (
+                    {selectedExampleId && sortedExamples.find(e => e.id === selectedExampleId) && (
                       <div className="space-y-8 animate-in fade-in duration-500">
                         {(() => {
-                          const example = lessonData.examples.find(e => e.id === selectedExampleId)!;
+                          const example = sortedExamples.find(e => e.id === selectedExampleId)!;
                           return (
                             <div className="space-y-8">
                               {/* Dạng Header Card */}
@@ -468,7 +573,7 @@ export default function App() {
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl" />
                                 <div className="relative z-10 flex items-center gap-4">
                                   <div className="px-3 py-1 bg-amber-500 rounded-full text-[10px] font-black uppercase tracking-widest text-black">
-                                    Dạng {lessonData.examples.indexOf(example) + 1}
+                                    Dạng {sortedExamples.indexOf(example) + 1}
                                   </div>
                                   <h4 className="text-lg font-bold">
                                     {example.name || "Phương pháp giải"}
@@ -580,7 +685,7 @@ export default function App() {
                 )}
 
                 {/* 3. Bài tập tự rèn Section */}
-                {activeTab === 'practice' && lessonData.practice && lessonData.practice.length > 0 && (
+                {activeTab === 'practice' && sortedPractice.length > 0 && (
                   <motion.section 
                     initial={{ opacity: 0, x: 10 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -591,7 +696,7 @@ export default function App() {
                       <h3 className="text-xl font-bold">Bài tập tự rèn luyện</h3>
                     </div>
                     <div className="grid gap-6">
-                      {(lessonData.practice || []).map((exercise, idx) => (
+                      {sortedPractice.map((exercise, idx) => (
                         <div key={exercise.id} className="bg-white border border-zinc-200 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
                           <div className="flex items-center justify-between">
                             <div className="markdown-body prose prose-zinc max-w-none flex-1">
@@ -672,7 +777,7 @@ export default function App() {
                 )}
 
                 {/* 4. Bài tập trắc nghiệm Section */}
-                {activeTab === 'quizzes' && lessonData.quizzes && lessonData.quizzes.length > 0 && (
+                {activeTab === 'quizzes' && sortedQuizzes.length > 0 && (
                   <motion.section 
                     initial={{ opacity: 0, x: 10 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -683,7 +788,7 @@ export default function App() {
                       <h3 className="text-xl font-bold">Bài tập trắc nghiệm</h3>
                     </div>
                     <div className="grid gap-6">
-                      {lessonData.quizzes.map((quiz) => (
+                      {sortedQuizzes.map((quiz) => (
                         <QuizDisplay key={quiz.id} quiz={quiz} />
                       ))}
                     </div>
