@@ -113,17 +113,21 @@ export default function App() {
 
   // Synchronize URL search params when selection changes or admin toggle changes
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    params.set('subject', selectedSubject);
-    params.set('grade', selectedGrade);
-    if (selectedLessonId) {
-      params.set('lesson', selectedLessonId.toString());
-    } else {
-      params.delete('lesson');
+    try {
+      const params = new URLSearchParams(window.location.search);
+      params.set('subject', selectedSubject);
+      params.set('grade', selectedGrade);
+      if (selectedLessonId) {
+        params.set('lesson', selectedLessonId.toString());
+      } else {
+        params.delete('lesson');
+      }
+      const pathname = isAdmin ? '/admin' : '/';
+      const newUrl = `${pathname}?${params.toString()}`;
+      window.history.replaceState({ path: newUrl }, '', newUrl);
+    } catch (error) {
+      console.warn("Failed to update history state (Safari iOS iframe safety restriction):", error);
     }
-    const pathname = isAdmin ? '/admin' : '/';
-    const newUrl = `${pathname}?${params.toString()}`;
-    window.history.replaceState({ path: newUrl }, '', newUrl);
   }, [selectedSubject, selectedGrade, selectedLessonId, isAdmin]);
 
   // Fetch chapters on mount / selector change
@@ -272,6 +276,14 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-zinc-50 overflow-hidden">
+      {/* Mobile Sidebar overlay backdrop */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/20 z-30 lg:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Mobile Sidebar Toggle */}
       {!isSidebarOpen && (
         <button
@@ -345,7 +357,12 @@ export default function App() {
                     {(chapter.lessons || []).map((lesson) => (
                       <button
                         key={lesson.id}
-                        onClick={() => setSelectedLessonId(lesson.id)}
+                        onClick={() => {
+                          setSelectedLessonId(lesson.id);
+                          if (window.innerWidth < 1024) {
+                            setIsSidebarOpen(false);
+                          }
+                        }}
                         className={`w-full text-left py-2 px-3 rounded-lg text-[13px] font-medium transition-all ${
                           selectedLessonId === lesson.id
                             ? 'bg-blue-50 text-blue-700 border-l-2 border-blue-600 rounded-l-none'
